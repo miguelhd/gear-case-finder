@@ -454,28 +454,36 @@ interface PaginationProps {
   className?: string;
 }
 
-const Pagination: React.FC<PaginationProps> = ({
-  currentPage,
-  totalPages,
+export const Pagination: React.FC<PaginationProps> = ({ 
+  currentPage, 
+  totalPages, 
   onPageChange,
   className = ''
 }) => {
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
   
-  // Show only a window of pages
+  // Create a window of pages to show (current page +/- 2)
   const getVisiblePages = () => {
     if (totalPages <= 7) return pages;
     
-    if (currentPage <= 4) {
-      return [...pages.slice(0, 5), '...', totalPages];
-    } else if (currentPage >= totalPages - 3) {
-      return [1, '...', ...pages.slice(totalPages - 5)];
-    } else {
-      return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+    let visiblePages = [1];
+    
+    if (currentPage > 3) {
+      visiblePages.push(-1); // Represents ellipsis
     }
+    
+    // Add pages around current page
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      visiblePages.push(i);
+    }
+    
+    if (currentPage < totalPages - 2) {
+      visiblePages.push(-2); // Represents ellipsis
+    }
+    
+    visiblePages.push(totalPages);
+    return visiblePages;
   };
-  
-  const visiblePages = getVisiblePages();
   
   return (
     <nav className={`flex justify-center ${className}`}>
@@ -484,4 +492,44 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1 rounded-md mr-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 <response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+            className="px-3 py-1 rounded-md mr-1 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Previous page"
+          >
+            &laquo;
+          </button>
+        </li>
+        
+        {getVisiblePages().map((page, index) => (
+          <li key={index}>
+            {page < 0 ? (
+              <span className="px-3 py-1">...</span>
+            ) : (
+              <button
+                onClick={() => onPageChange(page)}
+                className={`px-3 py-1 rounded-md mx-1 ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-300 hover:bg-gray-100'
+                }`}
+                aria-current={currentPage === page ? 'page' : undefined}
+              >
+                {page}
+              </button>
+            )}
+          </li>
+        ))}
+        
+        <li>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 rounded-md ml-1 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Next page"
+          >
+            &raquo;
+          </button>
+        </li>
+      </ul>
+    </nav>
+  );
+};
