@@ -4,12 +4,12 @@ import { getScraperHealth } from '../lib/monitoring';
 import { getCacheStats } from '../lib/cache';
 
 const AdminDashboard = () => {
-  const [scraperHealth, setScraperHealth] = useState(null);
-  const [cacheStats, setCacheStats] = useState(null);
-  const [databaseStats, setDatabaseStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [scraperHealth, setScraperHealth] = useState<any>(null);
+  const [cacheStats, setCacheStats] = useState<any>(null);
+  const [databaseStats, setDatabaseStats] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,7 +35,7 @@ const AdminDashboard = () => {
         setCacheStats(cacheData);
         setDatabaseStats(dbData);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }
@@ -73,7 +73,7 @@ const AdminDashboard = () => {
       setDatabaseStats(dbData);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -94,11 +94,11 @@ const AdminDashboard = () => {
       
       alert('Cache cleared successfully');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
   
-  const handleRunScraper = async (marketplace) => {
+  const handleRunScraper = async (marketplace: string) => {
     try {
       const response = await fetch('/api/admin/run-scraper', {
         method: 'POST',
@@ -114,7 +114,7 @@ const AdminDashboard = () => {
       
       alert(`${marketplace} scraper job started successfully`);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
   
@@ -336,7 +336,7 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {Object.entries(scraperHealth.marketplaces).map(([marketplace, data]) => (
+                {Object.entries(scraperHealth.marketplaces).map(([marketplace, data]: [string, any]) => (
                   <tr key={marketplace}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{marketplace}</div>
@@ -390,4 +390,230 @@ const AdminDashboard = () => {
       {/* Database Tab */}
       {activeTab === 'database' && databaseStats && (
         <div>
-          <h2<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+          <h2 className="text-xl font-semibold mb-4">Database Statistics</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+              <h3 className="text-lg font-medium mb-4">Audio Gear</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Items:</span>
+                  <span className="font-medium">{databaseStats.gearCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Categories:</span>
+                  <span className="font-medium">{databaseStats.gearCategories}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Brands:</span>
+                  <span className="font-medium">{databaseStats.gearBrands}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+              <h3 className="text-lg font-medium mb-4">Cases</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Items:</span>
+                  <span className="font-medium">{databaseStats.caseCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Types:</span>
+                  <span className="font-medium">{databaseStats.caseTypes}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Brands:</span>
+                  <span className="font-medium">{databaseStats.caseBrands}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+              <h3 className="text-lg font-medium mb-4">Matches</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Matches:</span>
+                  <span className="font-medium">{databaseStats.matchCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Avg. Compatibility:</span>
+                  <span className="font-medium">{databaseStats.avgCompatibility}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">High Compatibility:</span>
+                  <span className="font-medium">{databaseStats.highCompatibilityCount}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h3 className="text-lg font-medium mb-4">Recent Database Activity</h3>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Timestamp
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Collection
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Operation
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Count
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {databaseStats.recentActivity.map((activity: any, index: number) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(activity.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {activity.collection}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {activity.operation}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {activity.count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
+      {/* Cache Tab */}
+      {activeTab === 'cache' && cacheStats && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Cache Statistics</h2>
+            <button 
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+              onClick={handleClearCache}
+            >
+              Clear Cache
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+              <h3 className="text-lg font-medium mb-4">Cache Overview</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Items Cached:</span>
+                  <span className="font-medium">{cacheStats.itemCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Max Items:</span>
+                  <span className="font-medium">{cacheStats.maxItems}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Current Size:</span>
+                  <span className="font-medium">{cacheStats.size}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Max Size:</span>
+                  <span className="font-medium">{cacheStats.maxSize}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Hit Rate:</span>
+                  <span className="font-medium">{(cacheStats.hitRate * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+              
+              {/* Cache usage bar */}
+              <div className="mt-6">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Usage</span>
+                  <span>{Math.round((cacheStats.size / cacheStats.maxSize) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-blue-600 h-2.5 rounded-full" 
+                    style={{ width: `${Math.min(100, (cacheStats.size / cacheStats.maxSize) * 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+              <h3 className="text-lg font-medium mb-4">Cache Performance</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Requests:</span>
+                  <span className="font-medium">{cacheStats.totalRequests}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Cache Hits:</span>
+                  <span className="font-medium">{cacheStats.hits}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Cache Misses:</span>
+                  <span className="font-medium">{cacheStats.misses}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Avg. Response Time (Cached):</span>
+                  <span className="font-medium">{cacheStats.avgCachedResponseTime}ms</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Avg. Response Time (Uncached):</span>
+                  <span className="font-medium">{cacheStats.avgUncachedResponseTime}ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h3 className="text-lg font-medium mb-4">Cache Entries by Type</h3>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cache Type
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Items
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hit Rate
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Avg. TTL
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {cacheStats.entriesByType.map((entry: any, index: number) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {entry.type}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {entry.count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {(entry.hitRate * 100).toFixed(1)}%
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {entry.avgTtl / 1000}s
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;
