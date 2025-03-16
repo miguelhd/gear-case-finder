@@ -3,7 +3,7 @@ import { createLogger, format, transports } from 'winston';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { scraperMetrics, getScraperHealth } from './lib/monitoring';
+import { scraperMetrics, getScraperHealth } from './monitoring'
 import { getCacheStats } from './lib/cache';
 import { mongoose } from './lib/mongodb';
 
