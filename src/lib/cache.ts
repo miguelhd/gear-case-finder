@@ -3,37 +3,29 @@ import { LRUCache } from 'lru-cache';
 
 // Define cache options
 const options = {
-  // Maximum number of items to store in the cache
-  max: 500,
-  
-  // Maximum age of items in milliseconds (30 minutes)
-  ttl: 1000 * 60 * 30,
-  
-  // Function to calculate size of items (optional)
+  max: 500, // Maximum number of items in cache
+  ttl: 1000 * 60 * 5, // Time to live: 5 minutes
+  maxSize: 5000000, // Maximum cache size in bytes (approximately)
   sizeCalculation: (value: any, key: string) => {
-    return 1;
+    // Approximate size calculation based on JSON stringification
+    return JSON.stringify(value).length + (key ? key.length : 0);
   },
-  
-  // Maximum allowed cache size
-  maxSize: 5000,
-  
-  // Function to call when items are disposed from the cache
-  dispose: (value: any, key: string) => {
-    // Optional cleanup logic
-  }
+  allowStale: false,
 };
 
-// Create a singleton cache instance
-let cacheInstance: LRUCache<string, any> | null = null;
+// Create cache instance
+const cache = new LRUCache(options);
+
+// Track hits and misses for hit rate calculation
+let hits = 0;
+let misses = 0;
 
 /**
- * Get the cache instance (creates it if it doesn't exist)
+ * Get the cache instance
+ * @returns The LRU cache instance
  */
 export function getCache(): LRUCache<string, any> {
-  if (!cacheInstance) {
-    cacheInstance = new LRUCache(options);
-  }
-  return cacheInstance;
+  return cache;
 }
 
 /**
@@ -41,9 +33,14 @@ export function getCache(): LRUCache<string, any> {
  * @param key - Cache key
  * @returns The cached value or undefined if not found
  */
-export function getCacheItem<T>(key: string): T | undefined {
-  const cache = getCache();
-  return cache.get(key) as T | undefined;
+export function getCacheItem(key: string): any {
+  const value = cache.get(key);
+  if (value === undefined) {
+    misses++;
+  } else {
+    hits++;
+  }
+  return value;
 }
 
 /**
@@ -52,22 +49,16 @@ export function getCacheItem<T>(key: string): T | undefined {
  * @param value - Value to cache
  * @param ttl - Optional custom TTL in milliseconds
  */
-export function setCacheItem<T>(key: string, value: T, ttl?: number): void {
-  const cache = getCache();
-  if (ttl) {
-    cache.set(key, value, { ttl });
-  } else {
-    cache.set(key, value);
-  }
+export function setCacheItem(key: string, value: any, ttl?: number): void {
+  cache.set(key, value, { ttl });
 }
 
 /**
  * Remove an item from the cache
  * @param key - Cache key
- * @returns true if the item was removed, false otherwise
+ * @returns True if the item was removed, false if it wasn't in the cache
  */
 export function removeCacheItem(key: string): boolean {
-  const cache = getCache();
   return cache.delete(key);
 }
 
@@ -75,8 +66,9 @@ export function removeCacheItem(key: string): boolean {
  * Clear the entire cache
  */
 export function clearCache(): void {
-  const cache = getCache();
   cache.clear();
+  hits = 0;
+  misses = 0;
 }
 
 /**
@@ -84,44 +76,59 @@ export function clearCache(): void {
  * @returns Object with cache statistics
  */
 export function getCacheStats() {
-  const cache = getCache();
+  const totalRequests = hits + misses;
+  const hitRate = totalRequests > 0 ? hits / totalRequests : 0;
+  
   return {
-    size: cache.size,
-    maxSize: options.maxSize,
+    size: JSON.stringify(cache).length,
+    maxSize: options.maxSize || 5000000,
     itemCount: cache.size,
     maxItems: options.max,
-    hitRate: cache.calculatedHitRate,
+    hitRate: hitRate,
+    hits,
+    misses,
+    totalRequests
   };
 }
 
 /**
- * Wrapper function to cache the results of async functions
- * @param fn - Async function to cache
- * @param keyPrefix - Prefix for cache key
+ * Higher-order function to cache function results
+ * @param fn - Function to cache results for
+ * @param keyPrefix - Prefix for cache keys
  * @param ttl - Optional custom TTL in milliseconds
- * @returns Wrapped function with caching
+ * @returns Wrapped function that uses cache
  */
-export function withCache<T, Args extends any[]>(
-  fn: (...args: Args) => Promise<T>,
+export function withCache<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
   keyPrefix: string,
   ttl?: number
-): (...args: Args) => Promise<T> {
-  return async (...args: Args): Promise<T> => {
-    // Create a cache key based on the function arguments
+): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+    // Create cache key from function name, prefix and stringified arguments
     const key = `${keyPrefix}:${JSON.stringify(args)}`;
     
-    // Check if the result is already in the cache
-    const cachedResult = getCacheItem<T>(key);
+    // Try to get from cache first
+    const cachedResult = getCacheItem(key);
     if (cachedResult !== undefined) {
-      return cachedResult;
+      return cachedResult as ReturnType<T>;
     }
     
     // If not in cache, call the original function
     const result = await fn(...args);
     
-    // Store the result in the cache
-    setCacheItem<T>(key, result, ttl);
+    // Cache the result
+    setCacheItem(key, result, ttl);
     
     return result;
   };
 }
+
+export default {
+  getCache,
+  getCacheItem,
+  setCacheItem,
+  removeCacheItem,
+  clearCache,
+  getCacheStats,
+  withCache
+};
