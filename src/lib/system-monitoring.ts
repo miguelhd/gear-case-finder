@@ -4,8 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { scraperMetrics, getScraperHealth } from './monitoring'
-import { getCacheStats } from './lib/cache';
-import { mongoose } from './lib/mongodb';
+import { getCacheStats } from './cache';
+import { mongoose } from './mongodb';
 
 // Create logs directory if it doesn't exist
 const logDir = path.join(process.cwd(), 'logs');
