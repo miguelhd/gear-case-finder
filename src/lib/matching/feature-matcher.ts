@@ -95,7 +95,7 @@ export class FeatureMatcher {
     if (options.preferredMaterial && options.preferredMaterial.length > 0 && caseItem.material) {
       totalFactors++;
       const materialMatches = options.preferredMaterial.some(material => 
-        caseItem.material.toLowerCase().includes(material.toLowerCase())
+        caseItem.material?.toLowerCase().includes(material.toLowerCase())
       );
       if (materialMatches) {
         score += 100;

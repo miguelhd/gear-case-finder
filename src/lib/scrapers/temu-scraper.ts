@@ -291,46 +291,41 @@ export class TemuScraper extends BaseScraper {
       const features: string[] = [];
       const specElements = document.querySelectorAll('.product-specs-item');
       specElements.forEach(element => {
-        const label = element.querySelector('.specs-name')?.textContent?.trim();
+        const label = element.querySelector('.specs-label')?.textContent?.trim();
         const value = element.querySelector('.specs-value')?.textContent?.trim();
-        
         if (label && value) {
           features.push(`${label}: ${value}`);
-        }
-      });
-      
-      // Extract dimensions and weight from specifications
-      let dimensions;
-      let weight;
-      
-      features.forEach(feature => {
-        if (/dimensions|size|measurements/i.test(feature)) {
-          const value = feature.split(':')[1]?.trim();
-          if (value) {
-            dimensions = extractDimensions(value);
+          
+          // Check for dimensions or weight
+          if (/dimensions|size|measurements/i.test(label)) {
+            const extractedDimensions = extractDimensions(value);
+            if (extractedDimensions) {
+              dimensions = extractedDimensions;
+            }
           }
-        }
-        if (/weight/i.test(feature)) {
-          const value = feature.split(':')[1]?.trim();
-          if (value) {
-            weight = extractWeight(value);
+          
+          if (/weight/i.test(label)) {
+            const extractedWeight = extractWeight(value);
+            if (extractedWeight) {
+              weight = extractedWeight;
+            }
           }
         }
       });
       
       // Extract product rating
-      const ratingElement = document.querySelector('.product-rating');
+      const ratingElement = document.querySelector('.product-rating-value');
       const ratingText = ratingElement?.textContent?.trim() || '';
       const rating = ratingText ? parseFloat(ratingText) : undefined;
       
       // Extract review count
-      const reviewCountElement = document.querySelector('.product-reviews-count');
+      const reviewCountElement = document.querySelector('.product-review-count');
       const reviewCountText = reviewCountElement?.textContent?.trim() || '';
       const reviewCountMatch = reviewCountText.match(/\d+/);
       const reviewCount = reviewCountMatch ? parseInt(reviewCountMatch[0], 10) : undefined;
       
       // Extract availability
-      const availabilityElement = document.querySelector('.product-stock');
+      const availabilityElement = document.querySelector('.product-availability');
       const availability = availabilityElement?.textContent?.trim() || '';
       
       // Extract category
@@ -360,82 +355,4 @@ export class TemuScraper extends BaseScraper {
       throw error;
     }
   }
-  
-  /**
-   * Get products by category
-   */
-  async getProductsByCategory(category: string, options: { page?: number } = {}): Promise<ScrapedProduct[]> {
-    const page = options.page || 1;
-    
-    // Construct the category URL
-    const categoryUrl = `${this.baseUrl}/category/${category}.html?page=${page}`;
-    
-    try {
-      // Reuse the search products method as the page structure is similar
-      const response = await this.fetchWithRetry(categoryUrl);
-      
-      // The rest of the implementation is the same as searchProducts
-      // as Temu uses the same structure for search and category pages
-      const $ = cheerio.load(response.data);
-      const products: ScrapedProduct[] = [];
-      
-      // Try to extract the product data from the script tag
-      let scriptData = '';
-      $('script').each((_, element) => {
-        const scriptContent = $(element).html() || '';
-        if (scriptContent.includes('window.__INITIAL_STATE__')) {
-          scriptData = scriptContent;
-        }
-      });
-      
-      if (scriptData) {
-        // Extract the JSON data using regex
-        const dataMatch = scriptData.match(/window\.__INITIAL_STATE__\s*=\s*({.+});/);
-        if (dataMatch && dataMatch[1]) {
-          try {
-            const jsonData = JSON.parse(dataMatch[1]);
-            const items = jsonData.categoryResult?.result?.items || [];
-            
-            items.forEach((item: any) => {
-              if (!item.goodsId) return;
-              
-              const id = item.goodsId;
-              const title = normalizeProductTitle(item.goodsName || '');
-              const price = item.finalPrice || item.price || 0;
-              const currency = item.currencySymbol || '$';
-              const imageUrl = item.goodsImage || '';
-              const productUrl = `${this.baseUrl}/product_detail.html?goods_id=${id}`;
-              
-              // Extract rating if available
-              let rating;
-              if (item.goodsReviewStar) {
-                rating = parseFloat(item.goodsReviewStar);
-              }
-              
-              // Extract review count if available
-              let reviewCount;
-              if (item.goodsReviewCount) {
-                reviewCount = parseInt(item.goodsReviewCount, 10);
-              }
-              
-              products.push({
-                id,
-                title,
-                description: '',  // Need product details page for full description
-                price: typeof price === 'string' ? parseFloat(price.replace(/[^0-9.]/g, '')) : price,
-                currency: currency === '$' ? 'USD' : currency,
-                url: productUrl,
-                imageUrls: imageUrl ? [imageUrl] : [],
-                marketplace: 'temu',
-                rating,
-                reviewCount,
-                scrapedAt: new Date()
-              });
-            });
-            
-            return products;
-          } catch (error) {
-            console.error('Error parsing Temu JSON data:', error);
-          }
-        }
-<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+}
