@@ -106,7 +106,7 @@ export class FeatureMatcher {
     if (options.preferredColor && options.preferredColor.length > 0 && caseItem.color) {
       totalFactors++;
       const colorMatches = options.preferredColor.some(color => 
-        caseItem.color.toLowerCase().includes(color.toLowerCase())
+        caseItem.color?.toLowerCase().includes(color.toLowerCase())
       );
       if (colorMatches) {
         score += 100;
