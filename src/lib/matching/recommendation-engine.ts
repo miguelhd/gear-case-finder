@@ -210,17 +210,17 @@ export class RecommendationEngine {
     
     // Check if the case is explicitly designed for this type of gear (20% weight)
     const gearTypeKeywords = [
-      gear.type.toLowerCase(),
-      gear.category.toLowerCase(),
-      ...gear.name.toLowerCase().split(' ')
+      gear.type?.toLowerCase(),
+      gear.category?.toLowerCase(),
+      ...gear.name?.toLowerCase().split(' ')
     ];
     
     const caseDescription = caseItem.description?.toLowerCase() || '';
-    const caseName = caseItem.name.toLowerCase();
+    const caseName = caseItem.name?.toLowerCase() || '';
     
     const isExplicitlyDesigned = gearTypeKeywords.some(keyword => 
-      (caseDescription.includes(keyword) || caseName.includes(keyword)) &&
-      (caseDescription.includes('case') || caseName.includes('case'))
+      keyword && ((caseDescription.includes(keyword) || caseName.includes(keyword)) &&
+      (caseDescription.includes('case') || caseName.includes('case')))
     );
     
     if (isExplicitlyDesigned) {
@@ -319,7 +319,7 @@ export class RecommendationEngine {
     // Check in description
     if (caseItem.description) {
       if (keywords.some(keyword => 
-        caseItem.description.toLowerCase().includes(keyword)
+        caseItem.description?.toLowerCase().includes(keyword)
       )) {
         return true;
       }
@@ -328,7 +328,7 @@ export class RecommendationEngine {
     // Check in features
     if (caseItem.features) {
       if (caseItem.features.some(feature => 
-        keywords.some(keyword => feature.toLowerCase().includes(keyword))
+        keywords.some(keyword => feature?.toLowerCase().includes(keyword))
       )) {
         return true;
       }
@@ -336,7 +336,7 @@ export class RecommendationEngine {
     
     // Check in name
     if (keywords.some(keyword => 
-      caseItem.name.toLowerCase().includes(keyword)
+      caseItem.name?.toLowerCase().includes(keyword)
     )) {
       return true;
     }
