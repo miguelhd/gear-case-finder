@@ -159,8 +159,8 @@ export class DataNormalizer {
       'toolbox', 'tool box', 'makeup case', 'camera case'
     ];
     
-    const title = product.title.toLowerCase();
-    const description = product.description.toLowerCase();
+    const title = product.title?.toLowerCase() || '';
+    const description = product.description?.toLowerCase() || '';
     
     // Check if any of the case keywords appear in the title or description
     return caseKeywords.some(keyword => 
@@ -199,7 +199,7 @@ export class DataNormalizer {
     }
     
     // If no dimensions are available, try to extract from description or features
-    const description = product.description.toLowerCase();
+    const description = product.description?.toLowerCase() || '';
     const features = product.features ? product.features.join(' ').toLowerCase() : '';
     const combinedText = `${description} ${features}`;
     
@@ -253,8 +253,8 @@ export class DataNormalizer {
    * Determine product type based on title and description
    */
   private determineProductType(product: ScrapedProduct): string {
-    const title = product.title.toLowerCase();
-    const description = product.description.toLowerCase();
+    const title = product.title?.toLowerCase() || '';
+    const description = product.description?.toLowerCase() || '';
     const combinedText = `${title} ${description}`;
     
     // Define product type keywords
