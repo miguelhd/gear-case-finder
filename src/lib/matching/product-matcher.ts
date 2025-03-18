@@ -177,7 +177,7 @@ export class ProductMatcher {
     if (desiredFeatures.length > 0 && caseItem.features) {
       const matchedFeatures = desiredFeatures.filter(feature => 
         caseItem.features.some(caseFeature => 
-          caseFeature.toLowerCase().includes(feature.toLowerCase())
+          caseFeature?.toLowerCase().includes(feature?.toLowerCase())
         )
       );
       featureScore = (matchedFeatures.length / desiredFeatures.length) * 100;
