@@ -70,15 +70,28 @@ export interface ICase extends Document {
       unit: string;
     };
   };
+  // Add internalDimensions property to match usage in the codebase
+  internalDimensions: {
+    length: number;
+    width: number;
+    height: number;
+    unit: string;
+  };
+  externalDimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    unit: string;
+  };
   weight?: {
     value: number;
     unit: string;
   };
   features?: string[];
-  price?: {
-    value: number;
-    currency: string;
-  };
+  price?: number;
+  currency?: string;
+  rating?: number;
+  reviewCount?: number;
   imageUrl?: string;
   productUrl?: string;
   description?: string;
@@ -93,6 +106,14 @@ export interface ICase extends Document {
   material?: string;
   color?: string;
   marketplace?: string;
+  url?: string;
+  imageUrls?: string[];
+  availability?: string;
+  seller?: {
+    name?: string;
+    url?: string;
+    rating?: number;
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -116,15 +137,28 @@ const CaseSchema = new Schema({
       unit: { type: String }
     }
   },
+  // Add internalDimensions to schema to match interface
+  internalDimensions: {
+    length: { type: Number },
+    width: { type: Number },
+    height: { type: Number },
+    unit: { type: String }
+  },
+  externalDimensions: {
+    length: { type: Number },
+    width: { type: Number },
+    height: { type: Number },
+    unit: { type: String }
+  },
   weight: {
     value: { type: Number },
     unit: { type: String }
   },
   features: [{ type: String }],
-  price: {
-    value: { type: Number },
-    currency: { type: String }
-  },
+  price: { type: Number },
+  currency: { type: String },
+  rating: { type: Number },
+  reviewCount: { type: Number },
   imageUrl: { type: String },
   productUrl: { type: String },
   description: { type: String },
@@ -141,7 +175,15 @@ const CaseSchema = new Schema({
   hasLock: { type: Boolean, default: false },
   material: { type: String },
   color: { type: String },
-  marketplace: { type: String }
+  marketplace: { type: String },
+  url: { type: String },
+  imageUrls: [{ type: String }],
+  availability: { type: String },
+  seller: {
+    name: { type: String },
+    url: { type: String },
+    rating: { type: Number }
+  }
 }, { timestamps: true });
 
 // Gear-Case Match interface
