@@ -106,7 +106,7 @@ export class FeatureMatcher {
     if (options.preferredColor && options.preferredColor.length > 0 && caseItem.color) {
       totalFactors++;
       const colorMatches = options.preferredColor.some(color => 
-        caseItem.color?.toLowerCase().includes(color.toLowerCase())
+        caseItem.color?.toLowerCase().includes(color?.toLowerCase())
       );
       if (colorMatches) {
         score += 100;
@@ -180,7 +180,7 @@ export class FeatureMatcher {
     // Check in description
     if (caseItem.description) {
       if (paddingKeywords.some(keyword => 
-        caseItem.description.toLowerCase().includes(keyword)
+        caseItem.description?.toLowerCase().includes(keyword)
       )) {
         return true;
       }
@@ -189,7 +189,7 @@ export class FeatureMatcher {
     // Check in features
     if (caseItem.features) {
       if (caseItem.features.some(feature => 
-        paddingKeywords.some(keyword => feature.toLowerCase().includes(keyword))
+        paddingKeywords.some(keyword => feature?.toLowerCase().includes(keyword))
       )) {
         return true;
       }
@@ -197,7 +197,7 @@ export class FeatureMatcher {
     
     // Check in name
     if (paddingKeywords.some(keyword => 
-      caseItem.name.toLowerCase().includes(keyword)
+      caseItem.name?.toLowerCase().includes(keyword)
     )) {
       return true;
     }
@@ -214,7 +214,7 @@ export class FeatureMatcher {
     // Check in description
     if (caseItem.description) {
       if (compartmentKeywords.some(keyword => 
-        caseItem.description.toLowerCase().includes(keyword)
+        caseItem.description?.toLowerCase().includes(keyword)
       )) {
         return true;
       }
@@ -223,7 +223,7 @@ export class FeatureMatcher {
     // Check in features
     if (caseItem.features) {
       if (caseItem.features.some(feature => 
-        compartmentKeywords.some(keyword => feature.toLowerCase().includes(keyword))
+        compartmentKeywords.some(keyword => feature?.toLowerCase().includes(keyword))
       )) {
         return true;
       }
@@ -231,7 +231,7 @@ export class FeatureMatcher {
     
     // Check in name
     if (compartmentKeywords.some(keyword => 
-      caseItem.name.toLowerCase().includes(keyword)
+      caseItem.name?.toLowerCase().includes(keyword)
     )) {
       return true;
     }
@@ -264,8 +264,8 @@ export class FeatureMatcher {
     if (
       gear.category === 'Synthesizer' || 
       gear.category === 'Mixer' ||
-      gear.type.includes('Analog') ||
-      gear.type.includes('Vintage')
+      gear.type?.includes('Analog') ||
+      gear.type?.includes('Vintage')
     ) {
       return 'high';
     }
@@ -274,7 +274,7 @@ export class FeatureMatcher {
     if (
       gear.category === 'Drum Machine' ||
       gear.category === 'Audio Interface' ||
-      gear.type.includes('Digital')
+      gear.type?.includes('Digital')
     ) {
       return 'medium';
     }
@@ -282,7 +282,7 @@ export class FeatureMatcher {
     // Lower-value or robust equipment can use low protection
     if (
       gear.category === 'Effects Pedal' ||
-      gear.type.includes('Pedal')
+      gear.type?.includes('Pedal')
     ) {
       return 'low';
     }
