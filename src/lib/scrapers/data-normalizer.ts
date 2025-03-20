@@ -245,8 +245,16 @@ export class DataNormalizer {
       }
     }
     
-    // If no specific compatibility information is found, return undefined
-    return undefined;
+    // If no specific compatibility information is found, return empty object with default values
+    return {
+      minLength: 0,
+      maxLength: 0,
+      minWidth: 0,
+      maxWidth: 0,
+      minHeight: 0,
+      maxHeight: 0,
+      dimensionUnit: 'in'
+    };
   }
   
   /**

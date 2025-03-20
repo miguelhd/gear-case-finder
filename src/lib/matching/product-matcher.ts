@@ -100,7 +100,7 @@ export class ProductMatcher {
 
     // Filter by minimum compatibility score
     const filteredCases = scoredCases.filter(
-      caseItem => caseItem.compatibilityScore >= mergedOptions.minCompatibilityScore
+      caseItem => caseItem.compatibilityScore >= (mergedOptions.minCompatibilityScore || 70)
     );
 
     // Sort the results
@@ -174,9 +174,9 @@ export class ProductMatcher {
     // Feature score
     let featureScore = 0;
     const desiredFeatures = options.preferredFeatures || [];
-    if (desiredFeatures.length > 0 && caseItem.features) {
+    if (desiredFeatures.length > 0 && caseItem.features && Array.isArray(caseItem.features)) {
       const matchedFeatures = desiredFeatures.filter(feature => 
-        caseItem.features.some(caseFeature => 
+        caseItem.features!.some(caseFeature => 
           caseFeature?.toLowerCase().includes(feature?.toLowerCase())
         )
       );
@@ -223,10 +223,12 @@ export class ProductMatcher {
 
       // Determine price category
       let priceCategory: 'budget' | 'mid-range' | 'premium' = 'mid-range';
-      if (caseItem.price < 50) {
-        priceCategory = 'budget';
-      } else if (caseItem.price > 150) {
-        priceCategory = 'premium';
+      if (caseItem.price !== undefined) {
+        if (caseItem.price < 50) {
+          priceCategory = 'budget';
+        } else if (caseItem.price > 150) {
+          priceCategory = 'premium';
+        }
       }
 
       return {

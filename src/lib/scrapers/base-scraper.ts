@@ -91,9 +91,9 @@ export abstract class BaseScraper {
       }
       
       if (this.options.proxyType === 'socks') {
-        config.httpsAgent = new SocksProxyAgent(proxyOptions);
+        config.httpsAgent = new SocksProxyAgent(`socks://${this.options.proxyHost}:${this.options.proxyPort}`);
       } else {
-        config.httpsAgent = new HttpsProxyAgent(proxyOptions);
+        config.httpsAgent = new HttpsProxyAgent(`http://${this.options.proxyHost}:${this.options.proxyPort}`);
       }
     }
     
@@ -104,7 +104,7 @@ export abstract class BaseScraper {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
   
-  protected async fetchWithRetry(url: string, retries = this.options.retries): Promise<any> {
+  protected async fetchWithRetry(url: string, retries = this.options.retries ?? 3): Promise<any> {
     try {
       const response = await this.axiosInstance.get(url);
       await this.delay(this.options.delayBetweenRequests || 0);

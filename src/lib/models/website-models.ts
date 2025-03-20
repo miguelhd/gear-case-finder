@@ -185,4 +185,3 @@ const AffiliateSchema = new Schema({
 export const User = models.User || model<IUser>('User', UserSchema);
 export const Content = models.Content || model<IContent>('Content', ContentSchema);
 export const Analytics = models.Analytics || model<IAnalytics>('Analytics', AnalyticsSchema);
-export const Affiliate = models.Affiliate || model<IAffiliate>('Affiliate', AffiliateSchema);

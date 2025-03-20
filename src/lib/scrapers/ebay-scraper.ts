@@ -235,15 +235,15 @@ export class EbayScraper extends BaseScraper {
         currency: priceData?.currency || 'USD',
         url: productUrl,
         imageUrls,
-        dimensions,
-        weight,
+        dimensions: dimensions || undefined,
+        weight: weight || undefined,
         marketplace: 'ebay',
         rating,
         reviewCount,
         availability,
         seller: {
           name: sellerName,
-          url: sellerUrl,
+          url: sellerUrl || undefined,
           rating: sellerRating
         },
         category,

@@ -13,7 +13,7 @@ export interface ScraperManagerOptions {
 }
 
 export class ScraperManager {
-  private logger: winston.Logger;
+  private logger!: winston.Logger;
   private normalizer: DataNormalizer;
   private options: ScraperManagerOptions;
   private scrapers: Map<string, BaseScraper> = new Map();
@@ -33,7 +33,7 @@ export class ScraperManager {
   
   private setupLogger() {
     // Ensure log directory exists
-    fs.mkdir(this.options.logDirectory, { recursive: true }).catch(err => {
+    fs.mkdir(this.options.logDirectory || './logs', { recursive: true }).catch(err => {
       console.error(`Failed to create log directory: ${err.message}`);
     });
     
@@ -52,11 +52,11 @@ export class ScraperManager {
           )
         }),
         new winston.transports.File({ 
-          filename: path.join(this.options.logDirectory, 'error.log'), 
+          filename: path.join(this.options.logDirectory || './logs', 'error.log'), 
           level: 'error' 
         }),
         new winston.transports.File({ 
-          filename: path.join(this.options.logDirectory, 'combined.log') 
+          filename: path.join(this.options.logDirectory || './logs', 'combined.log') 
         })
       ]
     });
@@ -84,7 +84,9 @@ export class ScraperManager {
     const allResults: NormalizedProduct[] = [];
     const searchPromises: Promise<void>[] = [];
     
-    for (const [marketplace, scraper] of this.scrapers.entries()) {
+    // Convert Map entries to array before iteration to avoid TypeScript downlevelIteration issues
+    const scraperEntries = Array.from(this.scrapers.entries());
+    for (const [marketplace, scraper] of scraperEntries) {
       const searchPromise = this.withRetry(async () => {
         try {
           this.logger.info(`Searching ${marketplace} for: ${query}`);
@@ -176,11 +178,11 @@ export class ScraperManager {
   private async saveResults(results: NormalizedProduct[], filePrefix: string) {
     try {
       // Ensure data directory exists
-      await fs.mkdir(this.options.dataDirectory, { recursive: true });
+      await fs.mkdir(this.options.dataDirectory || './data', { recursive: true });
       
       // Create a timestamped filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = path.join(this.options.dataDirectory, `${filePrefix}_${timestamp}.json`);
+      const filename = path.join(this.options.dataDirectory || './data', `${filePrefix}_${timestamp}.json`);
       
       // Write the results to disk
       await fs.writeFile(filename, JSON.stringify(results, null, 2));

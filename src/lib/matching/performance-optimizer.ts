@@ -1,6 +1,6 @@
 import { ProductMatcher } from '../matching/product-matcher';
 import { FeatureMatcher } from '../matching/feature-matcher';
-import { RecommendationEngine } from '../matching/recommendation-engine';
+import { RecommendationEngine, RecommendationOptions } from '../matching/recommendation-engine';
 import { IAudioGear, ICase } from '../models/gear-models';
 import mongoose from 'mongoose';
 
@@ -386,8 +386,8 @@ export class MatchingTestSuite {
       
       // Mock the findBudgetAlternatives method
       const originalFindBudgetAlternatives = this.recommendationEngine['findBudgetAlternatives'];
-      this.recommendationEngine['findBudgetAlternatives'] = async () => {
-        return [{ ...budgetCase, compatibilityScore: 85 }];
+      this.recommendationEngine['findBudgetAlternatives'] = async (gear: IAudioGear, primaryMatch: ICase, options: RecommendationOptions) => {
+        return [budgetCase as (ICase & { compatibilityScore: number })];
       };
       
       const recommendations = await this.recommendationEngine.generateAlternativeRecommendations(
@@ -427,8 +427,8 @@ export class MatchingTestSuite {
       
       // Mock the findPremiumUpgrades method
       const originalFindPremiumUpgrades = this.recommendationEngine['findPremiumUpgrades'];
-      this.recommendationEngine['findPremiumUpgrades'] = async () => {
-        return [{ ...premiumCase, compatibilityScore: 90 }];
+      this.recommendationEngine['findPremiumUpgrades'] = async (gear: IAudioGear, primaryMatch: ICase, options: RecommendationOptions) => {
+        return [premiumCase as (ICase & { compatibilityScore: number })];
       };
       
       const recommendations = await this.recommendationEngine.generateAlternativeRecommendations(
