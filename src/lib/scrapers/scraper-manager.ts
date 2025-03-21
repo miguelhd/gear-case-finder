@@ -200,14 +200,14 @@ export class ScraperManager {
     maxRetries: number = 3,
     initialDelay: number = 1000
   ): Promise<T> {
-    let lastError: Error;
+    let lastError: Error = new Error("Operation failed");
     let delay = initialDelay;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
-        lastError = error;
+        lastError = error as Error;
         this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms...`, error);
         
         // Wait before retrying

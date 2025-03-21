@@ -49,7 +49,7 @@ export class RecommendationEngine {
       recommendations.push(...budgetOptions.map(item => ({
         ...item,
         recommendationType: 'budget'
-      })));
+      } as (ICase & { recommendationType: string; compatibilityScore: number }))));
     }
     
     // Find premium upgrades (better protection or features)
@@ -58,7 +58,7 @@ export class RecommendationEngine {
       recommendations.push(...upgradeOptions.map(item => ({
         ...item,
         recommendationType: 'premium'
-      })));
+      } as (ICase & { recommendationType: string; compatibilityScore: number }))));
     }
     
     // Find alternative sizes (different form factors)
@@ -67,7 +67,7 @@ export class RecommendationEngine {
       recommendations.push(...sizeAlternatives.map(item => ({
         ...item,
         recommendationType: 'alternative_size'
-      })));
+      } as (ICase & { recommendationType: string; compatibilityScore: number }))));
     }
     
     // Filter by brand preferences if specified
@@ -75,13 +75,13 @@ export class RecommendationEngine {
     
     if (mergedOptions.preferredBrands && mergedOptions.preferredBrands.length > 0) {
       filteredRecommendations = filteredRecommendations.filter(item => 
-        item.brand && mergedOptions.preferredBrands.includes(item.brand)
+        item.brand && mergedOptions.preferredBrands!.includes(item.brand)
       );
     }
     
     if (mergedOptions.excludedBrands && mergedOptions.excludedBrands.length > 0) {
       filteredRecommendations = filteredRecommendations.filter(item => 
-        !item.brand || !mergedOptions.excludedBrands.includes(item.brand)
+        !item.brand || !mergedOptions.excludedBrands!.includes(item.brand)
       );
     }
     
@@ -99,8 +99,8 @@ export class RecommendationEngine {
     options: RecommendationOptions
   ): Promise<Array<ICase & { compatibilityScore: number }>> {
     // Calculate the minimum price (e.g., 20% lower than primary match)
-    const minPrice = primaryMatch.price * 0.6;
-    const maxPrice = primaryMatch.price * 0.9;
+    const minPrice = primaryMatch.price! * 0.6;
+    const maxPrice = primaryMatch.price! * 0.9;
     
     // Find cases with similar protection level but lower price
     const matchingOptions = {
@@ -115,7 +115,7 @@ export class RecommendationEngine {
     const budgetAlternatives = await this.productMatcher.findCompatibleCases(gear, matchingOptions);
     
     // Filter out cases that are too cheap (might be poor quality)
-    return budgetAlternatives.filter(item => item.price >= minPrice && item.price < primaryMatch.price);
+    return budgetAlternatives.filter(item => item.price! >= minPrice && item.price! < primaryMatch.price!);
   }
   
   /**
@@ -127,12 +127,12 @@ export class RecommendationEngine {
     options: RecommendationOptions
   ): Promise<Array<ICase & { compatibilityScore: number }>> {
     // Calculate the maximum price (e.g., up to 50% more than primary match)
-    const maxPriceDiff = options.maxPriceDifferencePercent / 100;
-    const maxPrice = primaryMatch.price * (1 + maxPriceDiff);
-    const minPrice = primaryMatch.price * 1.1; // At least 10% more expensive
+    const maxPriceDiff = options.maxPriceDifferencePercent! / 100;
+    const maxPrice = primaryMatch.price! * (1 + maxPriceDiff);
+    const minPrice = primaryMatch.price! * 1.1; // At least 10% more expensive
     
     // Determine if we should upgrade the protection level
-    let preferredProtectionLevel: 'low' | 'medium' | 'high' = primaryMatch.protectionLevel;
+    let preferredProtectionLevel: 'low' | 'medium' | 'high' = primaryMatch.protectionLevel as ('low' | 'medium' | 'high');
     if (primaryMatch.protectionLevel === 'low') {
       preferredProtectionLevel = 'medium';
     } else if (primaryMatch.protectionLevel === 'medium') {
@@ -151,7 +151,7 @@ export class RecommendationEngine {
     const premiumAlternatives = await this.productMatcher.findCompatibleCases(gear, matchingOptions);
     
     // Filter by price range
-    return premiumAlternatives.filter(item => item.price >= minPrice && item.price <= maxPrice);
+    return premiumAlternatives.filter(item => item.price! >= minPrice && item.price! <= maxPrice);
   }
   
   /**

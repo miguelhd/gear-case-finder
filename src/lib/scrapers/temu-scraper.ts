@@ -98,32 +98,35 @@ export class TemuScraper extends BaseScraper {
       
       // Fallback to HTML parsing if script extraction fails
       $('.product-item').each((_, element) => {
-        const titleElement = $(element).find('.product-title');
-        const title = normalizeProductTitle(titleElement.text().trim());
+        const $element = $(element);
         
-        const linkElement = $(element).find('a.product-link');
-        const url = linkElement.attr('href') || '';
-        
-        // Extract item ID from URL
-        const idMatch = url.match(/goods_id=(\d+)/);
-        const id = idMatch ? idMatch[1] : '';
-        if (!id) return; // Skip items without ID
-        
-        const priceElement = $(element).find('.product-price');
-        const priceText = priceElement.text().trim();
+        const id = $element.attr('data-id') || '';
+        const title = normalizeProductTitle($element.find('.product-title').text().trim());
+        const priceText = $element.find('.product-price').text().trim();
         const priceData = extractPrice(priceText);
+        const imageUrl = $element.find('.product-image img').attr('src') || 
+                         $element.find('.product-image img').attr('data-src') || '';
+        const productUrl = `${this.baseUrl}/product_detail.html?goods_id=${id}`;
         
-        const imageElement = $(element).find('.product-image img');
-        const imageUrl = imageElement.attr('src') || imageElement.attr('data-src') || '';
+        // Extract rating if available
+        const ratingText = $element.find('.product-rating').text().trim();
+        let rating;
+        if (ratingText) {
+          const ratingMatch = ratingText.match(/([0-9.]+)/);
+          if (ratingMatch) {
+            rating = parseFloat(ratingMatch[1]);
+          }
+        }
         
-        const ratingElement = $(element).find('.product-rating');
-        const ratingText = ratingElement.text().trim();
-        const rating = ratingText ? parseFloat(ratingText) : undefined;
-        
-        const reviewCountElement = $(element).find('.product-reviews-count');
-        const reviewCountText = reviewCountElement.text().trim();
-        const reviewCountMatch = reviewCountText.match(/\d+/);
-        const reviewCount = reviewCountMatch ? parseInt(reviewCountMatch[0], 10) : undefined;
+        // Extract review count if available
+        const reviewText = $element.find('.product-reviews').text().trim();
+        let reviewCount;
+        if (reviewText) {
+          const reviewMatch = reviewText.match(/([0-9,]+)/);
+          if (reviewMatch) {
+            reviewCount = parseInt(reviewMatch[1].replace(/,/g, ''), 10);
+          }
+        }
         
         products.push({
           id,
@@ -131,7 +134,7 @@ export class TemuScraper extends BaseScraper {
           description: '',  // Need product details page for full description
           price: priceData?.price || 0,
           currency: priceData?.currency || 'USD',
-          url: url.startsWith('http') ? url : `${this.baseUrl}${url}`,
+          url: productUrl,
           imageUrls: imageUrl ? [imageUrl] : [],
           marketplace: 'temu',
           rating,
@@ -148,116 +151,114 @@ export class TemuScraper extends BaseScraper {
   }
   
   /**
-   * Get detailed information about a specific product
+   * Get product details from Temu
    */
   async getProductDetails(productId: string): Promise<ScrapedProduct> {
     const productUrl = `${this.baseUrl}/product_detail.html?goods_id=${productId}`;
     
     try {
       const response = await this.fetchWithRetry(productUrl);
-      const $ = cheerio.load(response.data);
+      
+      // Initialize variables for dimensions and weight
+      let dimensions;
+      let weight;
       
       // Try to extract the product data from the script tag
       // Temu stores product data in a JavaScript variable
-      let productData: any = null;
+      const $ = cheerio.load(response.data);
+      let scriptData = '';
       $('script').each((_, element) => {
         const scriptContent = $(element).html() || '';
         if (scriptContent.includes('window.__INITIAL_STATE__')) {
-          const dataMatch = scriptContent.match(/window\.__INITIAL_STATE__\s*=\s*({.+});/);
-          if (dataMatch && dataMatch[1]) {
-            try {
-              productData = JSON.parse(dataMatch[1]);
-            } catch (e) {
-              // Ignore JSON parse errors
-            }
-          }
+          scriptData = scriptContent;
         }
       });
       
-      // Extract product details from the parsed data
-      if (productData && productData.productDetail) {
-        const data = productData.productDetail;
-        
-        // Extract title
-        const title = normalizeProductTitle(data.goodsName || '');
-        
-        // Extract price
-        const priceText = data.finalPrice || data.price || '';
-        const currency = data.currencySymbol || '$';
-        const price = typeof priceText === 'string' ? parseFloat(priceText.replace(/[^0-9.]/g, '')) : priceText;
-        
-        // Extract images
-        const imageUrls: string[] = [];
-        if (data.goodsImageList) {
-          data.goodsImageList.forEach((img: string) => {
-            if (img) {
-              imageUrls.push(img);
+      if (scriptData) {
+        // Extract the JSON data using regex
+        const dataMatch = scriptData.match(/window\.__INITIAL_STATE__\s*=\s*({.+});/);
+        if (dataMatch && dataMatch[1]) {
+          try {
+            const jsonData = JSON.parse(dataMatch[1]);
+            const data = jsonData.productDetail?.data || {};
+            
+            // Extract basic product information
+            const title = normalizeProductTitle(data.goodsName || '');
+            const description = data.goodsDesc || '';
+            const price = data.finalPrice || data.price || 0;
+            const currency = data.currencySymbol || '$';
+            
+            // Extract images
+            const imageUrls: string[] = [];
+            if (data.goodsImageList && Array.isArray(data.goodsImageList)) {
+              data.goodsImageList.forEach((img: any) => {
+                if (img.url) {
+                  imageUrls.push(img.url);
+                }
+              });
+            } else if (data.goodsImage) {
+              imageUrls.push(data.goodsImage);
             }
-          });
-        } else if (data.goodsImage) {
-          imageUrls.push(data.goodsImage);
+            
+            // Extract features
+            const features: string[] = [];
+            if (data.goodsProperties && Array.isArray(data.goodsProperties)) {
+              data.goodsProperties.forEach((prop: any) => {
+                if (prop.name && prop.value) {
+                  features.push(`${prop.name}: ${prop.value}`);
+                }
+              });
+            }
+            
+            // Extract dimensions and weight
+            if (data.goodsProperties) {
+              data.goodsProperties.forEach((prop: any) => {
+                if (/dimensions|size|measurements/i.test(prop.name) && prop.value) {
+                  dimensions = extractDimensions(prop.value);
+                }
+                if (/weight/i.test(prop.name) && prop.value) {
+                  weight = extractWeight(prop.value);
+                }
+              });
+            }
+            
+            // Extract rating
+            const rating = data.goodsReviewStar ? parseFloat(data.goodsReviewStar) : undefined;
+            
+            // Extract review count
+            const reviewCount = data.goodsReviewCount ? parseInt(data.goodsReviewCount, 10) : undefined;
+            
+            // Extract availability
+            const availability = data.goodsStock 
+              ? `${data.goodsStock} available` 
+              : undefined;
+            
+            // Extract category
+            const category = data.categoryName || '';
+            
+            return {
+              id: productId,
+              title,
+              description,
+              price,
+              currency: currency === '$' ? 'USD' : currency,
+              url: productUrl,
+              imageUrls,
+              dimensions,
+              weight,
+              marketplace: 'temu',
+              rating,
+              reviewCount,
+              availability,
+              category,
+              features,
+              scrapedAt: new Date()
+            };
+          }
+          catch (error) {
+            console.error(`Error parsing Temu product JSON data for ${productId}:`, error);
+          }
         }
-        
-        // Extract description
-        let description = data.goodsDesc || '';
-        
-        // Extract specifications
-        const features: string[] = [];
-        if (data.goodsProperties) {
-          data.goodsProperties.forEach((prop: any) => {
-            if (prop.name && prop.value) {
-              features.push(`${prop.name}: ${prop.value}`);
-            }
-          });
-        }
-        
-        // Extract dimensions and weight from specifications
-        let dimensions;
-        let weight;
-        
-        if (data.goodsProperties) {
-          data.goodsProperties.forEach((prop: any) => {
-            if (/dimensions|size|measurements/i.test(prop.name) && prop.value) {
-              dimensions = extractDimensions(prop.value);
-            }
-            if (/weight/i.test(prop.name) && prop.value) {
-              weight = extractWeight(prop.value);
-            }
-          });
-        }
-        
-        // Extract rating
-        const rating = data.goodsReviewStar ? parseFloat(data.goodsReviewStar) : undefined;
-        
-        // Extract review count
-        const reviewCount = data.goodsReviewCount ? parseInt(data.goodsReviewCount, 10) : undefined;
-        
-        // Extract availability
-        const availability = data.goodsStock 
-          ? `${data.goodsStock} available` 
-          : undefined;
-        
-        // Extract category
-        const category = data.categoryName || '';
-        
-        return {
-          id: productId,
-          title,
-          description,
-          price,
-          currency: currency === '$' ? 'USD' : currency,
-          url: productUrl,
-          imageUrls,
-          dimensions,
-          weight,
-          marketplace: 'temu',
-          rating,
-          reviewCount,
-          availability,
-          category,
-          features,
-          scrapedAt: new Date()
-        };
       }
       
       // Fallback to HTML parsing if script extraction fails
@@ -353,6 +354,24 @@ export class TemuScraper extends BaseScraper {
     } catch (error) {
       console.error(`Error fetching Temu product details for ${productId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Get products by category from Temu
+   */
+  async getProductsByCategory(category: string, options: { page?: number } = {}): Promise<ScrapedProduct[]> {
+    const page = options.page || 1;
+    
+    // Construct the category URL
+    const categoryUrl = `${this.baseUrl}/category.html?category=${encodeURIComponent(category)}&page=${page}`;
+    
+    try {
+      // Reuse the searchProducts method as the page structure is similar
+      return await this.searchProducts('', { category, page });
+    } catch (error) {
+      console.error(`Error fetching Temu products for category ${category}:`, error);
+      return [];
     }
   }
 }

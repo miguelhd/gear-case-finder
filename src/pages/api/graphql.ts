@@ -1,13 +1,15 @@
 import { ApolloServer } from 'apollo-server-micro';
 import { gql } from 'apollo-server-micro';
-import { connectToDatabase } from '../../lib/mongodb';
+import { clientPromise, mongoose } from '../../lib/mongodb';
 import { AudioGear, Case, GearCaseMatch } from '../../lib/models/gear-models';
-import { User, Content, Analytics, Affiliate } from '../../lib/models/website-models';
+import { User, Content, Analytics, IAffiliate } from '../../lib/models/website-models';
 import { ProductMatcher } from '../../lib/matching/product-matcher';
 import { RecommendationEngine } from '../../lib/matching/recommendation-engine';
 import { FeedbackManager } from '../../lib/matching/feedback-manager';
 import { NextApiRequest, NextApiResponse } from 'next';
-import Cors from 'micro-cors';
+// import Cors from 'micro-cors';
+// Using require instead of import to avoid TypeScript errors
+const Cors = require('micro-cors');
 
 // Initialize services
 const productMatcher = new ProductMatcher();
@@ -15,7 +17,8 @@ const recommendationEngine = new RecommendationEngine();
 const feedbackManager = new FeedbackManager();
 
 // Connect to database
-connectToDatabase();
+// Database connection is already established in the mongodb.ts file
+// No need to explicitly connect here
 
 // Define GraphQL schema
 const typeDefs = gql`
@@ -340,13 +343,13 @@ const typeDefs = gql`
 const resolvers = {
   Query: {
     // Gear queries
-    gear: async (_, { id }) => {
+    gear: async (_: any, { id }: { id: string }) => {
       return await AudioGear.findById(id);
     },
-    allGear: async (_, { limit = 20, offset = 0 }) => {
+    allGear: async (_: any, { limit = 20, offset = 0 }: { limit?: number, offset?: number }) => {
       return await AudioGear.find().limit(limit).skip(offset);
     },
-    searchGear: async (_, { query, limit = 20 }) => {
+    searchGear: async (_: any, { query, limit = 20 }: { query: string, limit?: number }) => {
       return await AudioGear.find({
         $or: [
           { name: { $regex: query, $options: 'i' } },
@@ -355,22 +358,22 @@ const resolvers = {
         ]
       }).limit(limit);
     },
-    gearByCategory: async (_, { category, limit = 20, offset = 0 }) => {
+    gearByCategory: async (_: any, { category, limit = 20, offset = 0 }: { category: string, limit?: number, offset?: number }) => {
       return await AudioGear.find({ category }).limit(limit).skip(offset);
     },
-    gearByBrand: async (_, { brand, limit = 20, offset = 0 }) => {
+    gearByBrand: async (_: any, { brand, limit = 20, offset = 0 }: { brand: string, limit?: number, offset?: number }) => {
       return await AudioGear.find({ brand }).limit(limit).skip(offset);
     },
-    popularGear: async (_, { limit = 20 }) => {
+    popularGear: async (_: any, { limit = 20 }: { limit?: number }) => {
       return await AudioGear.find().sort({ popularity: -1 }).limit(limit);
     },
-    gearCategories: async () => {
+    gearCategories: async (_: any) => {
       return await AudioGear.distinct('category');
     },
-    gearBrands: async () => {
+    gearBrands: async (_: any) => {
       return await AudioGear.distinct('brand');
     },
-    paginatedGear: async (_, { filter = {} }) => {
+    paginatedGear: async (_: any, { filter = {} }: { filter?: any }) => {
       const {
         categories,
         brands,
@@ -380,7 +383,7 @@ const resolvers = {
         sortDirection = 'desc'
       } = filter;
 
-      const query = {};
+      const query: any = {};
       if (categories && categories.length > 0) {
         query.category = { $in: categories };
       }

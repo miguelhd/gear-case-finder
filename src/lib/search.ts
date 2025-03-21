@@ -278,9 +278,9 @@ export const findCompatibleCases = withCache(
     let queryBuilder: any = {
       // Ensure internal dimensions are larger than gear dimensions
       // with some tolerance (e.g., 0.5 inches)
-      'internalDimensions.length': { $gte: gear.dimensions.length + 0.5 },
-      'internalDimensions.width': { $gte: gear.dimensions.width + 0.5 },
-      'internalDimensions.height': { $gte: gear.dimensions.height + 0.5 }
+      'internalDimensions.length': { $gte: (gear as any).dimensions?.length + 0.5 },
+      'internalDimensions.width': { $gte: (gear as any).dimensions?.width + 0.5 },
+      'internalDimensions.height': { $gte: (gear as any).dimensions?.height + 0.5 }
     };
 
     // Price range filter
@@ -304,9 +304,9 @@ export const findCompatibleCases = withCache(
     // Calculate compatibility score for each case
     const scoredCases = cases.map(caseItem => {
       // Calculate dimension fit (how well the gear fits in the case)
-      const lengthFit = Math.min(100, (gear.dimensions.length / caseItem.internalDimensions.length) * 100);
-      const widthFit = Math.min(100, (gear.dimensions.width / caseItem.internalDimensions.width) * 100);
-      const heightFit = Math.min(100, (gear.dimensions.height / caseItem.internalDimensions.height) * 100);
+      const lengthFit = Math.min(100, ((gear as any).dimensions.length / caseItem.internalDimensions.length) * 100);
+      const widthFit = Math.min(100, ((gear as any).dimensions.width / caseItem.internalDimensions.width) * 100);
+      const heightFit = Math.min(100, ((gear as any).dimensions.height / caseItem.internalDimensions.height) * 100);
       
       // Overall fit (average of all dimensions)
       const overallFit = (lengthFit + widthFit + heightFit) / 3;
@@ -347,12 +347,12 @@ export const findCompatibleCases = withCache(
           : a.compatibilityScore - b.compatibilityScore;
       } else if (sortBy === 'price') {
         return sortOrder === 'desc' 
-          ? b.price - a.price
-          : a.price - b.price;
+          ? (b as any).price - (a as any).price
+          : (a as any).price - (b as any).price;
       } else if (sortBy === 'rating') {
         return sortOrder === 'desc' 
-          ? (b.rating || 0) - (a.rating || 0)
-          : (a.rating || 0) - (b.rating || 0);
+          ? ((b as any).rating || 0) - ((a as any).rating || 0)
+          : ((a as any).rating || 0) - ((b as any).rating || 0);
       }
       return 0;
     });

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '../../lib/mongodb';
+import { clientPromise, mongoose } from '../../lib/mongodb';
 import { Case } from '../../lib/models/gear-models';
 
 /**
@@ -7,8 +7,8 @@ import { Case } from '../../lib/models/gear-models';
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Connect to the database
-    await connectToDatabase();
+    // Database connection is already established in the mongodb.ts file
+    // No need to explicitly connect here
     
     // Route based on HTTP method
     switch (req.method) {

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '../../lib/mongodb';
+import { clientPromise, mongoose } from '../../lib/mongodb';
 import { AudioGear } from '../../lib/models/gear-models';
 import { ProductMatcher } from '../../lib/matching/product-matcher';
 import { FeatureMatcher } from '../../lib/matching/feature-matcher';
@@ -15,8 +15,8 @@ const recommendationEngine = new RecommendationEngine();
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Connect to the database
-    await connectToDatabase();
+    // Database connection is already established in the mongodb.ts file
+    // No need to explicitly connect here
     
     // Route based on HTTP method
     switch (req.method) {
