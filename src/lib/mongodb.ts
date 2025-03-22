@@ -58,3 +58,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Export a module-scoped MongoClient promise and Mongoose connection
 export { clientPromise, mongooseConnection as mongoose };
+
+// Add connectToDatabase function for backward compatibility
+export async function connectToDatabase() {
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(uri);
+  }
+  return { client, mongoose };
+}

@@ -391,7 +391,7 @@ const resolvers = {
         query.brand = { $in: brands };
       }
 
-      const sort = {};
+      const sort: { [key: string]: 1 | -1 } = {};
       sort[sortBy] = sortDirection === 'asc' ? 1 : -1;
 
       const skip = (page - 1) * limit;
@@ -410,13 +410,13 @@ const resolvers = {
     },
 
     // Case queries
-    case: async (_, { id }) => {
+    case: async (_: any, { id }: { id: string }) => {
       return await Case.findById(id);
     },
-    allCases: async (_, { limit = 20, offset = 0 }) => {
+    allCases: async (_: any, { limit = 20, offset = 0 }: { limit?: number, offset?: number }) => {
       return await Case.find().limit(limit).skip(offset);
     },
-    searchCases: async (_, { query, limit = 20 }) => {
+    searchCases: async (_: any, { query, limit = 20 }: { query: string, limit?: number }) => {
       return await Case.find({
         $or: [
           { name: { $regex: query, $options: 'i' } },
@@ -426,28 +426,28 @@ const resolvers = {
         ]
       }).limit(limit);
     },
-    casesByType: async (_, { type, limit = 20, offset = 0 }) => {
+    casesByType: async (_: any, { type, limit = 20, offset = 0 }: { type: string, limit?: number, offset?: number }) => {
       return await Case.find({ type }).limit(limit).skip(offset);
     },
-    casesByBrand: async (_, { brand, limit = 20, offset = 0 }) => {
+    casesByBrand: async (_: any, { brand, limit = 20, offset = 0 }: { brand: string, limit?: number, offset?: number }) => {
       return await Case.find({ brand }).limit(limit).skip(offset);
     },
-    casesByMarketplace: async (_, { marketplace, limit = 20, offset = 0 }) => {
+    casesByMarketplace: async (_: any, { marketplace, limit = 20, offset = 0 }: { marketplace: string, limit?: number, offset?: number }) => {
       return await Case.find({ marketplace }).limit(limit).skip(offset);
     },
-    popularCases: async (_, { limit = 20 }) => {
+    popularCases: async (_: any, { limit = 20 }: { limit?: number }) => {
       return await Case.find().sort({ rating: -1 }).limit(limit);
     },
-    caseTypes: async () => {
+    caseTypes: async (_: any) => {
       return await Case.distinct('type');
     },
-    caseBrands: async () => {
+    caseBrands: async (_: any) => {
       return await Case.distinct('brand');
     },
-    caseMarketplaces: async () => {
+    caseMarketplaces: async (_: any) => {
       return await Case.distinct('marketplace');
     },
-    paginatedCases: async (_, { filter = {} }) => {
+    paginatedCases: async (_: any, { filter = {} }: { filter?: any }) => {
       const {
         types,
         brands,
@@ -466,7 +466,7 @@ const resolvers = {
         sortDirection = 'desc'
       } = filter;
 
-      const query = {};
+      const query: Record<string, any> = {};
       if (types && types.length > 0) {
         query.type = { $in: types };
       }
@@ -504,7 +504,7 @@ const resolvers = {
         query.shockproof = shockproof;
       }
 
-      const sort = {};
+      const sort: { [key: string]: 1 | -1 } = {};
       sort[sortBy] = sortDirection === 'asc' ? 1 : -1;
 
       const skip = (page - 1) * limit;
@@ -540,7 +540,7 @@ const resolvers = {
     },
 
     // Match queries
-    match: async (_, { gearId, caseId }) => {
+    match: async (_: any, { gearId, caseId }: { gearId: string, caseId: string }) => {
       const match = await GearCaseMatch.findOne({ gearId, caseId })
         .populate('gearId')
         .populate('caseId');
@@ -578,34 +578,4 @@ const resolvers = {
         compatibilityScore: match.compatibilityScore,
         dimensionFit: match.dimensionFit,
         priceCategory: match.priceCategory,
-        protectionLevel: match.protectionLevel,
-        features: match.features
-      }));
-    },
-    matchesForCase: async (_, { caseId, limit = 10 }) => {
-      const matches = await GearCaseMatch.find({ caseId })
-        .sort({ compatibilityScore: -1 })
-        .limit(limit)
-        .populate('gearId')
-        .populate('caseId');
-      
-      return matches.map(match => ({
-        id: match._id,
-        gear: match.gearId,
-        case: match.caseId,
-        compatibilityScore: match.compatibilityScore,
-        dimensionFit: match.dimensionFit,
-        priceCategory: match.priceCategory,
-        protectionLevel: match.protectionLevel,
-        features: match.features
-      }));
-    },
-    popularMatches: async (_, { limit = 10 }) => {
-      const matches = await GearCaseMatch.find()
-        .sort({ compatibilityScore: -1 })
-        .limit(limit)
-        .populate('gearId')
-        .populate('caseId');
-      
-      return matches.map(match => ({
-        id: match.<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+        protectionLevel: match.protectionLe<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>

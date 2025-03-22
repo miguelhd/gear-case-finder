@@ -3,9 +3,11 @@ import Link from 'next/link';
 
 interface LayoutProps {
   children: ReactNode;
+  title?: string;
+  description?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, title, description }) => {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-blue-600 text-white shadow-md">

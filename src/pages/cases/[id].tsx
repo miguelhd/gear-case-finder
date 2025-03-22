@@ -160,7 +160,6 @@ const CaseDetailPage: React.FC = () => {
 
   const caseItem = data.case;
   const affiliateLink = generateAffiliateLink(caseItem.url, caseItem.marketplace);
-
   return (
     <Layout 
       title={`${caseItem.name} - Musician Case Finder`} 
@@ -330,8 +329,8 @@ const CaseDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Special features */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              {/* Properties */}
+              <div className="grid grid-cols-4 gap-2 mb-6">
                 <div className={`flex flex-col items-center p-3 rounded-lg ${caseItem.waterproof ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}>
                   <svg className="h-6 w-6 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -357,10 +356,10 @@ const CaseDetailPage: React.FC = () => {
                   <span className="text-xs font-medium">Wheels</span>
                 </div>
               </div>
-
+              
               {/* Seller info */}
               {caseItem.seller && (
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seller Information</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                 <response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+                    {case<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
