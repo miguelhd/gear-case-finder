@@ -354,7 +354,8 @@ const resolvers = {
         $or: [
           { name: { $regex: query, $options: 'i' } },
           { brand: { $regex: query, $options: 'i' } },
-          { type: { $regex: query, $options: 'i' } }
+          { type: { $regex: query, $options: 'i' } },
+          { category: { $regex: query, $options: 'i' } }
         ]
       }).limit(limit);
     },
@@ -364,40 +365,48 @@ const resolvers = {
     gearByBrand: async (_: any, { brand, limit = 20, offset = 0 }: { brand: string, limit?: number, offset?: number }) => {
       return await AudioGear.find({ brand }).limit(limit).skip(offset);
     },
-    popularGear: async (_: any, { limit = 20 }: { limit?: number }) => {
+    popularGear: async (_: any, { limit = 10 }: { limit?: number }) => {
       return await AudioGear.find().sort({ popularity: -1 }).limit(limit);
     },
-    gearCategories: async (_: any) => {
-      return await AudioGear.distinct('category');
+    gearCategories: async () => {
+      const categories = await AudioGear.distinct('category');
+      return categories;
     },
-    gearBrands: async (_: any) => {
-      return await AudioGear.distinct('brand');
+    gearBrands: async () => {
+      const brands = await AudioGear.distinct('brand');
+      return brands;
     },
     paginatedGear: async (_: any, { filter = {} }: { filter?: any }) => {
       const {
-        categories,
         brands,
-        page = 1,
-        limit = 20,
+        types,
+        categories,
         sortBy = 'popularity',
-        sortDirection = 'desc'
+        sortDirection = 'desc',
+        page = 1,
+        limit = 20
       } = filter;
-
-      const query: any = {};
-      if (categories && categories.length > 0) {
-        query.category = { $in: categories };
-      }
+      
+      const query: Record<string, any> = {};
+      
       if (brands && brands.length > 0) {
         query.brand = { $in: brands };
       }
-
-      const sort: { [key: string]: 1 | -1 } = {};
-      sort[sortBy] = sortDirection === 'asc' ? 1 : -1;
-
+      if (types && types.length > 0) {
+        query.type = { $in: types };
+      }
+      if (categories && categories.length > 0) {
+        query.category = { $in: categories };
+      }
+      
+      // Create sort object with proper typing for MongoDB
+      const sortObj: { [key: string]: 1 | -1 } = {};
+      sortObj[sortBy] = sortDirection === 'asc' ? 1 : -1;
+      
       const skip = (page - 1) * limit;
-      const items = await AudioGear.find(query).sort(sort).skip(skip).limit(limit);
+      const items = await AudioGear.find(query).sort(sortObj).skip(skip).limit(limit);
       const total = await AudioGear.countDocuments(query);
-
+      
       return {
         items,
         pagination: {
@@ -408,7 +417,7 @@ const resolvers = {
         }
       };
     },
-
+    
     // Case queries
     case: async (_: any, { id }: { id: string }) => {
       return await Case.findById(id);
@@ -421,8 +430,7 @@ const resolvers = {
         $or: [
           { name: { $regex: query, $options: 'i' } },
           { brand: { $regex: query, $options: 'i' } },
-          { type: { $regex: query, $options: 'i' } },
-          { description: { $regex: query, $options: 'i' } }
+          { type: { $regex: query, $options: 'i' } }
         ]
       }).limit(limit);
     },
@@ -435,22 +443,25 @@ const resolvers = {
     casesByMarketplace: async (_: any, { marketplace, limit = 20, offset = 0 }: { marketplace: string, limit?: number, offset?: number }) => {
       return await Case.find({ marketplace }).limit(limit).skip(offset);
     },
-    popularCases: async (_: any, { limit = 20 }: { limit?: number }) => {
-      return await Case.find().sort({ rating: -1 }).limit(limit);
+    popularCases: async (_: any, { limit = 10 }: { limit?: number }) => {
+      return await Case.find().sort({ reviewCount: -1 }).limit(limit);
     },
-    caseTypes: async (_: any) => {
-      return await Case.distinct('type');
+    caseTypes: async () => {
+      const types = await Case.distinct('type');
+      return types;
     },
-    caseBrands: async (_: any) => {
-      return await Case.distinct('brand');
+    caseBrands: async () => {
+      const brands = await Case.distinct('brand');
+      return brands;
     },
-    caseMarketplaces: async (_: any) => {
-      return await Case.distinct('marketplace');
+    caseMarketplaces: async () => {
+      const marketplaces = await Case.distinct('marketplace');
+      return marketplaces;
     },
     paginatedCases: async (_: any, { filter = {} }: { filter?: any }) => {
       const {
-        types,
         brands,
+        types,
         marketplaces,
         protectionLevels,
         minPrice,
@@ -460,18 +471,19 @@ const resolvers = {
         hasWheels,
         waterproof,
         shockproof,
+        sortBy = 'reviewCount',
+        sortDirection = 'desc',
         page = 1,
-        limit = 20,
-        sortBy = 'rating',
-        sortDirection = 'desc'
+        limit = 20
       } = filter;
-
+      
       const query: Record<string, any> = {};
-      if (types && types.length > 0) {
-        query.type = { $in: types };
-      }
+      
       if (brands && brands.length > 0) {
         query.brand = { $in: brands };
+      }
+      if (types && types.length > 0) {
+        query.type = { $in: types };
       }
       if (marketplaces && marketplaces.length > 0) {
         query.marketplace = { $in: marketplaces };
@@ -503,14 +515,13 @@ const resolvers = {
       if (shockproof !== undefined) {
         query.shockproof = shockproof;
       }
-
-      const sort: { [key: string]: 1 | -1 } = {};
-      sort[sortBy] = sortDirection === 'asc' ? 1 : -1;
-
+      // Create sort object with proper typing for MongoDB
+      const sortObj: { [key: string]: 1 | -1 } = {};
+      sortObj[sortBy] = sortDirection === 'asc' ? 1 : -1;
+      
       const skip = (page - 1) * limit;
-      const items = await Case.find(query).sort(sort).skip(skip).limit(limit);
+      const items = await Case.find(query).sort(sortObj).skip(skip).limit(limit);
       const total = await Case.countDocuments(query);
-
       return {
         items,
         pagination: {
@@ -538,7 +549,6 @@ const resolvers = {
       
       return [result[0].minPrice, result[0].maxPrice];
     },
-
     // Match queries
     match: async (_: any, { gearId, caseId }: { gearId: string, caseId: string }) => {
       const match = await GearCaseMatch.findOne({ gearId, caseId })
@@ -564,18 +574,5 @@ const resolvers = {
         averageRating
       };
     },
-    matchesForGear: async (_, { gearId, limit = 10 }) => {
-      const matches = await GearCaseMatch.find({ gearId })
-        .sort({ compatibilityScore: -1 })
-        .limit(limit)
-        .populate('gearId')
-        .populate('caseId');
-      
-      return matches.map(match => ({
-        id: match._id,
-        gear: match.gearId,
-        case: match.caseId,
-        compatibilityScore: match.compatibilityScore,
-        dimensionFit: match.dimensionFit,
-        priceCategory: match.priceCategory,
-        protectionLevel: match.protectionLe<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+    matchesForGear: async (_: any, { gearId, limit = 10 }: { gearId: string, limit?: number }) => {
+   <response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>

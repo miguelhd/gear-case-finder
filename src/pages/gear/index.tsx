@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery, gql } from '@apollo/client';
-import { Card, Spinner, Pagination, Select, RangeSlider, Checkbox, Button } from '../components/ui';
-import Layout from '../components/Layout';
+import { Card, Spinner, Pagination, Select, RangeSlider, Checkbox, Button } from '../../components/ui';
+import Layout from '../../components/Layout';
 
 // GraphQL query for fetching gear items with pagination and filtering
 const GET_GEAR_ITEMS = gql`
