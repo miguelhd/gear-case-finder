@@ -641,7 +641,9 @@ const apolloServer = new ApolloServer({
 
 // Enable CORS
 const cors = Cors({
-  allowMethods: ['POST', 'OPTIONS', 'GET', 'HEAD'],
+  allowMethods: ['POST', 'OPTIONS', 'GET', 'HEAD', 'PUT', 'DELETE', 'PATCH'],
+  origin: '*',
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Apollo-Tracing'],
 });
 
 // Start Apollo Server
@@ -653,6 +655,11 @@ export default cors(async (req: NextApiRequest, res: NextApiResponse) => {
     res.end();
     return false;
   }
+  
+  // Set CORS headers directly
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Apollo-Tracing');
   
   await startServer;
   
