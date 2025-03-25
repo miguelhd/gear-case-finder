@@ -1031,10 +1031,14 @@ const apolloServer = new ApolloServer({
 // Create handler with Next.js integration
 const handler = startServerAndCreateNextHandler(apolloServer, {
   context: async (req, res) => {
+    // Disable authentication requirements for now
+    // This allows the API to be accessed without authentication tokens
     return {
       req,
       res,
       db: await clientPromise,
+      // Set auth to null to explicitly disable authentication checks
+      auth: null
     };
   },
 });
@@ -1043,8 +1047,8 @@ const handler = startServerAndCreateNextHandler(apolloServer, {
 export default async function graphqlHandler(req: NextApiRequest, res: NextApiResponse) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apollo-require-preflight, Apollo-Require-Preflight');
   
   // Handle OPTIONS method for preflight requests
   if (req.method === 'OPTIONS') {
