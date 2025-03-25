@@ -575,4 +575,28 @@ const resolvers = {
       };
     },
     matchesForGear: async (_: any, { gearId, limit = 10 }: { gearId: string, limit?: number }) => {
-   <response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>
+      const matches = await GearCaseMatch.find({ gearId })
+        .populate('gearId')
+        .populate('caseId')
+        .limit(limit);
+      
+      if (!matches || matches.length === 0) return [];
+      
+      return Promise.all(matches.map(async (match) => {
+        const feedback = await feedbackManager.getFeedbackForMatch(match.gearId, match.caseId);
+        const averageRating = await feedbackManager.getAverageRatingForMatch(match.gearId, match.caseId);
+        
+        return {
+          id: match._id,
+          gear: match.gearId,
+          case: match.caseId,
+          compatibilityScore: match.compatibilityScore,
+          dimensionFit: match.dimensionFit,
+          priceCategory: match.priceCategory,
+          protectionLevel: match.protectionLevel,
+          features: match.features,
+          feedback,
+          averageRating
+        };
+      }));
+    },
