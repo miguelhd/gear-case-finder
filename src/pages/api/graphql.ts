@@ -639,11 +639,13 @@ const apolloServer = new ApolloServer({
   }
 });
 
-// Enable CORS
+// Enable CORS with all necessary configurations
 const cors = Cors({
   allowMethods: ['POST', 'OPTIONS', 'GET', 'HEAD', 'PUT', 'DELETE', 'PATCH'],
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Apollo-Tracing'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Apollo-Tracing', 'apollo-query-plan-experimental'],
+  credentials: true,
+  maxAge: 86400, // 24 hours in seconds
 });
 
 // Start Apollo Server
@@ -651,21 +653,30 @@ const startServer = apolloServer.start();
 
 // Export API handler
 export default cors(async (req: NextApiRequest, res: NextApiResponse) => {
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.end();
-    return false;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Apollo-Tracing, apollo-query-plan-experimental');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.status(200).end();
+    return;
   }
   
-  // Set CORS headers directly
+  // Set CORS headers directly for all requests
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Apollo-Tracing');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Apollo-Tracing, apollo-query-plan-experimental');
   
   await startServer;
   
-  await apolloServer.createHandler({
+  // Create Apollo handler with proper configuration
+  const handler = apolloServer.createHandler({
     path: '/api/graphql',
-  })(req, res);
+  });
+  
+  // Call the handler with the request and response
+  return handler(req, res);
 });
 
 // Disable Next.js body parsing
