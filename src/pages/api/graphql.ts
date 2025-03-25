@@ -381,31 +381,37 @@ const resolvers = {
         brands,
         types,
         categories,
-        sortBy = 'popularity',
-        sortDirection = 'desc',
         page = 1,
-        limit = 20
+        limit = 20,
+        sortBy = 'name',
+        sortDirection = 'asc'
       } = filter;
       
-      const query: Record<string, any> = {};
+      const query: any = {};
       
       if (brands && brands.length > 0) {
         query.brand = { $in: brands };
       }
+      
       if (types && types.length > 0) {
         query.type = { $in: types };
       }
+      
       if (categories && categories.length > 0) {
         query.category = { $in: categories };
       }
       
-      // Create sort object with proper typing for MongoDB
-      const sortObj: { [key: string]: 1 | -1 } = {};
-      sortObj[sortBy] = sortDirection === 'asc' ? 1 : -1;
+      const sort: any = {};
+      sort[sortBy] = sortDirection === 'asc' ? 1 : -1;
       
       const skip = (page - 1) * limit;
-      const items = await AudioGear.find(query).sort(sortObj).skip(skip).limit(limit);
-      const total = await AudioGear.countDocuments(query);
+      
+      const [items, total] = await Promise.all([
+        AudioGear.find(query).sort(sort).skip(skip).limit(limit),
+        AudioGear.countDocuments(query)
+      ]);
+      
+      const pages = Math.ceil(total / limit);
       
       return {
         items,
@@ -413,7 +419,7 @@ const resolvers = {
           total,
           page,
           limit,
-          pages: Math.ceil(total / limit)
+          pages
         }
       };
     },
@@ -471,26 +477,30 @@ const resolvers = {
         hasWheels,
         waterproof,
         shockproof,
-        sortBy = 'reviewCount',
-        sortDirection = 'desc',
         page = 1,
-        limit = 20
+        limit = 20,
+        sortBy = 'name',
+        sortDirection = 'asc'
       } = filter;
       
-      const query: Record<string, any> = {};
+      const query: any = {};
       
       if (brands && brands.length > 0) {
         query.brand = { $in: brands };
       }
+      
       if (types && types.length > 0) {
         query.type = { $in: types };
       }
+      
       if (marketplaces && marketplaces.length > 0) {
         query.marketplace = { $in: marketplaces };
       }
+      
       if (protectionLevels && protectionLevels.length > 0) {
         query.protectionLevel = { $in: protectionLevels };
       }
+      
       if (minPrice !== undefined || maxPrice !== undefined) {
         query.price = {};
         if (minPrice !== undefined) {
@@ -500,35 +510,46 @@ const resolvers = {
           query.price.$lte = maxPrice;
         }
       }
+      
       if (features && features.length > 0) {
-        query.features = { $in: features };
+        query.features = { $all: features };
       }
+      
       if (hasHandle !== undefined) {
         query.hasHandle = hasHandle;
       }
+      
       if (hasWheels !== undefined) {
         query.hasWheels = hasWheels;
       }
+      
       if (waterproof !== undefined) {
         query.waterproof = waterproof;
       }
+      
       if (shockproof !== undefined) {
         query.shockproof = shockproof;
       }
-      // Create sort object with proper typing for MongoDB
-      const sortObj: { [key: string]: 1 | -1 } = {};
-      sortObj[sortBy] = sortDirection === 'asc' ? 1 : -1;
+      
+      const sort: any = {};
+      sort[sortBy] = sortDirection === 'asc' ? 1 : -1;
       
       const skip = (page - 1) * limit;
-      const items = await Case.find(query).sort(sortObj).skip(skip).limit(limit);
-      const total = await Case.countDocuments(query);
+      
+      const [items, total] = await Promise.all([
+        Case.find(query).sort(sort).skip(skip).limit(limit),
+        Case.countDocuments(query)
+      ]);
+      
+      const pages = Math.ceil(total / limit);
+      
       return {
         items,
         pagination: {
           total,
           page,
           limit,
-          pages: Math.ceil(total / limit)
+          pages
         }
       };
     },
@@ -599,4 +620,50 @@ const resolvers = {
           averageRating
         };
       }));
-    },
+    }
+  }
+};
+
+// Create Apollo Server
+const apolloServer = new ApolloServer({
+  typeDefs,
+  resolvers,
+  introspection: true,
+  context: async ({ req }) => {
+    return {
+      db: await clientPromise,
+      productMatcher,
+      recommendationEngine,
+      feedbackManager
+    };
+  }
+});
+
+// Enable CORS
+const cors = Cors({
+  allowMethods: ['POST', 'OPTIONS', 'GET', 'HEAD'],
+});
+
+// Start Apollo Server
+const startServer = apolloServer.start();
+
+// Export API handler
+export default cors(async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method === 'OPTIONS') {
+    res.end();
+    return false;
+  }
+  
+  await startServer;
+  
+  await apolloServer.createHandler({
+    path: '/api/graphql',
+  })(req, res);
+});
+
+// Disable Next.js body parsing
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
