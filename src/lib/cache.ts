@@ -1,5 +1,5 @@
 // Cache implementation for performance optimization
-import LRUCache from 'lru-cache';
+import * as LRUCacheModule from 'lru-cache';
 
 // Define cache options
 const options = {
@@ -13,7 +13,8 @@ const options = {
   allowStale: false,
 };
 
-// Create cache instance
+// Create cache instance with proper constructor access
+const LRUCache = LRUCacheModule.default || LRUCacheModule;
 const cache = new LRUCache(options);
 
 // Track hits and misses for hit rate calculation
@@ -24,7 +25,7 @@ let misses = 0;
  * Get the cache instance
  * @returns The LRU cache instance
  */
-export function getCache(): LRUCache<string, any> {
+export function getCache() {
   return cache;
 }
 

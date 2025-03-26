@@ -2,6 +2,41 @@
 
 ## Latest Update: March 26, 2025
 
+### Vercel Deployment Error Fix - LRUCache Implementation
+
+#### Issues Addressed
+1. **LRUCache Constructor Error**: Fixed the "This expression is not constructable" error in Vercel deployment.
+2. **Module System Compatibility**: Resolved discrepancy between local TypeScript compiler and Vercel build environment.
+3. **Import Pattern Correction**: Implemented a flexible import pattern that works with both ESM and CommonJS.
+
+#### Changes Made
+1. **Cache Implementation** (`src/lib/cache.ts`):
+   - Changed from default import to a flexible namespace import pattern
+   - Added fallback handling for both default and named exports
+   - Ensured compatibility with different module systems
+   - Fixed type definitions to work in both environments
+
+#### Technical Details
+- The error occurred because the lru-cache package has different export patterns in different environments
+- Local TypeScript compiler expected a default import while Vercel expected a named export
+- Multiple versions of lru-cache were present in the dependency tree (5.1.1, 6.0.0, 7.13.1, 7.18.3, 10.4.3)
+- Implemented a flexible import pattern that handles both cases: `const LRUCache = LRUCacheModule.default || LRUCacheModule`
+
+#### Next Steps
+1. Complete TypeScript type checking issues resolution for GraphQL resolvers
+2. Consider standardizing all package versions to avoid similar issues
+3. Implement comprehensive error handling for cache operations
+4. Add unit tests for cache functionality
+
+#### Testing Notes
+- The LRUCache implementation fix has been tested locally and should resolve the Vercel deployment error
+- The build now passes the LRUCache-related error
+- Remaining TypeScript errors are unrelated to the cache implementation and were present before
+
+---
+
+## Previous Update: March 26, 2025
+
 ### GraphQL API 405 Method Not Allowed Error Fix
 
 #### Issues Addressed
@@ -44,9 +79,7 @@
 
 ---
 
-## Previous Updates
-
-### Initial Project Setup
+## Initial Project Setup
 - Created Next.js application with TypeScript
 - Implemented MongoDB connection
 - Set up GraphQL API with Apollo Server
