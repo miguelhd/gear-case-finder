@@ -99,7 +99,7 @@ export class FeedbackManager {
         },
         priceCategory: 'mid-range', // Default value
         protectionLevel: 'medium', // Default value
-        features: []
+        features: [] as string[]
       });
       
       await newMatch.save();
@@ -146,7 +146,11 @@ export class FeedbackManager {
     
     // Get case details for each match
     const Case = mongoose.model<ICase>('Case');
-    const results = [];
+    const results: Array<{
+      case: ICase;
+      averageRating: number;
+      feedbackCount: number;
+    }> = [];
     
     for (const item of feedback) {
       const caseItem = await Case.findById(item._id);

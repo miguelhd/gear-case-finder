@@ -305,7 +305,7 @@ export function getScraperHealth() {
       .length;
     
     let status = 'healthy';
-    let issues = [];
+    const issues: string[] = [];
     
     // Check for issues
     if (successRate < 80) {
