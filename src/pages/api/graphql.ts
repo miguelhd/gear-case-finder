@@ -11,11 +11,27 @@ import { SortOrder } from 'mongoose';
 import { Types } from 'mongoose';
 import { ApolloServer } from 'apollo-server-micro';
 import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
+import Cors from 'micro-cors';
 
 // Initialize services
 const productMatcher = new ProductMatcher();
 const recommendationEngine = new RecommendationEngine();
 const feedbackManager = new FeedbackManager();
+
+// Configure CORS
+const cors = Cors({
+  allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
+  allowHeaders: [
+    'X-Requested-With',
+    'Access-Control-Allow-Origin',
+    'X-HTTP-Method-Override',
+    'Content-Type',
+    'Authorization',
+    'Accept',
+  ],
+  origin: '*',
+  credentials: true,
+});
 
 // Define GraphQL schema
 const typeDefs = gql`
@@ -1174,13 +1190,29 @@ const apolloServer = new ApolloServer({
   }
 })();
 
-// Create handler function
+// Create handler function with CORS support
 const handler = (req: NextApiRequest, res: NextApiResponse) => {
+  // Handle OPTIONS request for CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(200).end();
+    return;
+  }
+
+  // Add CORS headers to all responses
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
   // Use micro handler from apollo-server-micro
   return apolloServer.createHandler({
     path: '/api/graphql',
   })(req, res);
 };
 
-// Export the handler
-export default handler;
+// Export the handler with CORS middleware
+export default cors(handler);
