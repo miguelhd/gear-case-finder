@@ -122,31 +122,23 @@ const AdminDashboard = () => {
             <h3 className="text-lg leading-6 font-medium text-gray-900">Quick Actions</h3>
             <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <Link href="/admin/scrapers/run">
-                  <a className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Run Scrapers
-                  </a>
+                <Link href="/admin/scrapers/run" className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Run Scrapers
                 </Link>
               </div>
               <div>
-                <Link href="/admin/database/import">
-                  <a className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                    Import Data
-                  </a>
+                <Link href="/admin/database/import" className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                  Import Data
                 </Link>
               </div>
               <div>
-                <Link href="/admin/monitoring/logs">
-                  <a className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                    View Logs
-                  </a>
+                <Link href="/admin/monitoring/logs" className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                  View Logs
                 </Link>
               </div>
               <div>
-                <Link href="/admin/settings">
-                  <a className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                    Settings
-                  </a>
+                <Link href="/admin/settings" className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                  Settings
                 </Link>
               </div>
             </div>
@@ -165,10 +157,8 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="mt-6">
-              <Link href="/admin/monitoring/activity">
-                <a className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  View All Activity
-                </a>
+              <Link href="/admin/monitoring/activity" className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                View All Activity
               </Link>
             </div>
           </div>

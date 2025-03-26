@@ -48,8 +48,7 @@ const AdminSidebar = () => {
             
             return (
               <li key={item.name} className="mb-2">
-                <Link href={item.href}>
-                  <a className={`flex items-center px-4 py-2 text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+                <Link href={item.href} className={`flex items-center px-4 py-2 text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
                     <svg 
                       className="mr-3 h-5 w-5" 
                       xmlns="http://www.w3.org/2000/svg" 
@@ -60,7 +59,6 @@ const AdminSidebar = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                     </svg>
                     {item.name}
-                  </a>
                 </Link>
               </li>
             );
