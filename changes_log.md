@@ -1,32 +1,91 @@
 # Changes Log - March 26, 2025
 
-## TypeScript Error Fix in Scrapers Page
+## GraphQL API 405 Error Fix
 
 ### Issue
-- Deployment to Vercel was failing with a TypeScript error in `src/pages/admin/scrapers.tsx`
-- Error message: `Type error: Argument of type 'any' is not assignable to parameter of type 'never'`
-- The error occurred on line 87 where `selectedScrapers.includes(scraperId)` was called
+- GraphQL API endpoint was returning 405 Method Not Allowed errors
+- Error message: `"networkError": { "name": "ServerError", "response": {}, "statusCode": 405, "result": "" }`
+- Users were unable to fetch data through the GraphQL API
 
 ### Root Cause
-- The `selectedScrapers` state was initialized as an empty array without type annotation: `useState([])`
-- TypeScript inferred this as `never[]` type, causing type errors when trying to use array methods like `includes()`
-- The `scraperId` parameter in the `toggleScraperSelection` function was also missing type annotation
+- Mismatch between imports and implementation in the GraphQL API handler
+- The code was importing `startServerAndCreateNextHandler` from `@as-integrations/next` (newer Apollo Server integration)
+- But still using `apolloServer.createHandler` from `apollo-server-micro` (older Apollo Server integration)
+- Missing `micro` dependency required by `apollo-server-micro`
+- Top-level await syntax error due to TypeScript target set to ES2015
 
 ### Fix Implemented
-1. Added proper type annotation to the `selectedScrapers` state:
+1. Updated imports to use `ApolloServer` from `@apollo/server` instead of `apollo-server-micro`
+2. Removed deprecated imports:
    ```typescript
-   const [selectedScrapers, setSelectedScrapers] = useState<string[]>([]);
+   // Removed
+   import { ApolloServer } from 'apollo-server-micro';
+   import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
+   import Cors from 'micro-cors';
    ```
 
-2. Added type annotation to the `scraperId` parameter:
+3. Removed micro-cors configuration and replaced with direct CORS headers in the handler
+4. Updated Apollo Server creation to use the newer API:
    ```typescript
-   const toggleScraperSelection = (scraperId: string) => {
+   // Create Apollo Server with @apollo/server
+   const apolloServer = new ApolloServer({
+     typeDefs,
+     resolvers,
+     introspection: true,
+   });
    ```
 
-3. Verified the fix with a successful local build
-4. Updated PROGRESS.md with details about the fix
-5. Committed and pushed changes to the repository
+5. Implemented proper server initialization with async IIFE:
+   ```typescript
+   // Initialize Apollo Server
+   (async () => {
+     await apolloServer.start();
+   })();
+   ```
+
+6. Updated handler implementation to use `startServerAndCreateNextHandler`:
+   ```typescript
+   // Create handler with enhanced logging and CORS support
+   const handler = startServerAndCreateNextHandler(apolloServer, {
+     context: async (req, res) => {
+       // Add logging for debugging
+       console.log(`[DEBUG] GraphQL API request: ${req.method} ${req.url}`);
+       
+       // Add CORS headers to all responses
+       res.setHeader('Access-Control-Allow-Origin', '*');
+       res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+       
+       // Return context object with database connection and services
+       return {
+         req,
+         res,
+         db: mongoose.connection,
+         productMatcher,
+         recommendationEngine,
+         feedbackManager
+       };
+     }
+   });
+   ```
+
+7. Updated TypeScript configuration to support ES2017 features:
+   ```json
+   "compilerOptions": {
+     "target": "es2017",
+     // other options...
+   }
+   ```
 
 ### Verification
-- Local build completed successfully with no TypeScript errors
-- All functionality remains intact with minimal changes to the codebase
+- Tested locally with curl command:
+  ```
+  curl -X POST http://localhost:3002/api/graphql -H "Content-Type: application/json" -d '{"query": "{ __typename }"}'
+  ```
+- Received successful response: `{"data":{"__typename":"Query"}}`
+- All changes committed and pushed to the repository
+
+### Files Modified
+1. `/src/pages/api/graphql.ts` - Updated GraphQL API implementation
+2. `/tsconfig.json` - Updated TypeScript target to ES2017
+3. `/PROGRESS.md` - Updated with details about the fix
