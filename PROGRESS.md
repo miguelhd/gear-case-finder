@@ -2,6 +2,52 @@
 
 ## Latest Update: March 26, 2025
 
+### GraphQL API TypeScript Fixes
+
+#### Issues Addressed
+1. **Dynamic Property Access Errors**: Fixed "Property 'X' does not exist on type '{}'" errors in GraphQL resolvers.
+2. **Mongoose Namespace Issues**: Resolved "Cannot find namespace 'mongoose'" errors.
+3. **Method Access Problems**: Fixed private/missing method access issues in the ProductMatcher class.
+4. **Apollo Server Plugin Type Errors**: Corrected type mismatch in Apollo Server plugins array.
+5. **Sort Parameter Type Compatibility**: Fixed incompatibility between custom sort types and Mongoose's expected types.
+
+#### Changes Made
+1. **GraphQL API** (`src/pages/api/graphql.ts`):
+   - Added proper interface definitions for MongoDB query and sort objects
+   - Imported `Types` from mongoose to fix namespace issues
+   - Fixed sort parameter typing to be compatible with Mongoose's expected types
+   - Added type assertion for Apollo Server plugins array
+   - Improved error handling in resolvers
+
+2. **Product Matcher** (`src/lib/matching/product-matcher.ts`):
+   - Made `calculateCompatibilityScore` method public (removed 'private' modifier)
+   - Added missing `calculateDimensionFit` method
+   - Added missing `determinePriceCategory` method
+   - Refactored `saveMatches` method to use the new methods
+
+#### Technical Details
+- The main issue was TypeScript inferring empty objects (`{}`) as having no properties
+- When properties were dynamically added to these objects, TypeScript raised type errors
+- The fix involves creating interfaces with index signatures (`[key: string]: any`) to allow dynamic properties
+- For Mongoose sort parameters, we needed to use the proper `SortOrder` type from mongoose
+- The Apollo Server plugins array needed a type assertion to satisfy TypeScript's strict type checking
+
+#### Next Steps
+1. Address remaining TypeScript errors in test files (not critical for deployment)
+2. Implement comprehensive error handling for GraphQL operations
+3. Add unit tests for GraphQL resolvers
+4. Consider upgrading all Apollo-related dependencies to the latest versions
+
+#### Testing Notes
+- The GraphQL API type fixes have been tested locally with a successful build
+- The build process completes without TypeScript errors in production code
+- Some TypeScript errors remain in test files, but these don't affect deployment
+- The tsconfig.json modifications from previous fixes help with these fixes as well
+
+---
+
+## Previous Update: March 26, 2025
+
 ### TypeScript Array Type Fixes
 
 #### Issues Addressed

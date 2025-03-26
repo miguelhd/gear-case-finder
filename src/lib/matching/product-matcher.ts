@@ -132,7 +132,7 @@ export class ProductMatcher {
   /**
    * Calculate compatibility score between gear and case
    */
-  private calculateCompatibilityScore(
+  calculateCompatibilityScore(
     gear: IAudioGear,
     caseItem: ICase,
     options: MatchingOptions = {}
@@ -205,6 +205,35 @@ export class ProductMatcher {
   }
 
   /**
+   * Calculate dimension fit between gear and case
+   */
+  calculateDimensionFit(gear: IAudioGear, caseItem: ICase): any {
+    return {
+      length: (gear.dimensions.length / caseItem.internalDimensions.length) * 100,
+      width: (gear.dimensions.width / caseItem.internalDimensions.width) * 100,
+      height: (gear.dimensions.height / caseItem.internalDimensions.height) * 100,
+      overall: ((gear.dimensions.length / caseItem.internalDimensions.length) +
+               (gear.dimensions.width / caseItem.internalDimensions.width) +
+               (gear.dimensions.height / caseItem.internalDimensions.height)) / 3 * 100
+    };
+  }
+
+  /**
+   * Determine price category for a case
+   */
+  determinePriceCategory(caseItem: ICase): string {
+    let priceCategory: 'budget' | 'mid-range' | 'premium' = 'mid-range';
+    if (caseItem.price !== undefined) {
+      if (caseItem.price < 50) {
+        priceCategory = 'budget';
+      } else if (caseItem.price > 150) {
+        priceCategory = 'premium';
+      }
+    }
+    return priceCategory;
+  }
+
+  /**
    * Save matches to the database for future reference
    */
   private async saveMatches(
@@ -212,24 +241,8 @@ export class ProductMatcher {
     cases: Array<ICase & { compatibilityScore: number }>
   ): Promise<void> {
     const bulkOps = cases.map(caseItem => {
-      const dimensionFit = {
-        length: (gear.dimensions.length / caseItem.internalDimensions.length) * 100,
-        width: (gear.dimensions.width / caseItem.internalDimensions.width) * 100,
-        height: (gear.dimensions.height / caseItem.internalDimensions.height) * 100,
-        overall: ((gear.dimensions.length / caseItem.internalDimensions.length) +
-                 (gear.dimensions.width / caseItem.internalDimensions.width) +
-                 (gear.dimensions.height / caseItem.internalDimensions.height)) / 3 * 100
-      };
-
-      // Determine price category
-      let priceCategory: 'budget' | 'mid-range' | 'premium' = 'mid-range';
-      if (caseItem.price !== undefined) {
-        if (caseItem.price < 50) {
-          priceCategory = 'budget';
-        } else if (caseItem.price > 150) {
-          priceCategory = 'premium';
-        }
-      }
+      const dimensionFit = this.calculateDimensionFit(gear, caseItem);
+      const priceCategory = this.determinePriceCategory(caseItem);
 
       return {
         updateOne: {

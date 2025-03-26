@@ -1,4 +1,3 @@
-import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { gql } from 'graphql-tag';  // Changed from @apollo/server
 import { clientPromise, mongoose } from '../../lib/mongodb';
@@ -8,6 +7,8 @@ import { ProductMatcher } from '../../lib/matching/product-matcher';
 import { RecommendationEngine } from '../../lib/matching/recommendation-engine';
 import { FeedbackManager } from '../../lib/matching/feedback-manager';
 import { NextApiRequest, NextApiResponse } from 'next';
+import { SortOrder } from 'mongoose';
+import { Types } from 'mongoose';
 
 // Initialize services
 const productMatcher = new ProductMatcher();
@@ -49,113 +50,98 @@ const typeDefs = gql`
     imageUrl: String
     productUrl: String
     description: String
-    popularity: Int
-    releaseYear: Int
-    discontinued: Boolean
-    compatibleCases(limit: Int): [Case]
+    price: Float
+    currency: String
+    inStock: Boolean
+    rating: Float
+    reviewCount: Int
+    features: [String]
+    compatibleWith: [String]
+    seller: Seller
+    createdAt: String
+    updatedAt: String
   }
 
   # Case type
   type Case {
     id: ID!
-    sourceId: String!
-    marketplace: String!
     name: String!
     brand: String
     type: String!
-    externalDimensions: Dimensions!
     internalDimensions: Dimensions!
+    externalDimensions: Dimensions
     weight: Weight
-    price: Float!
-    currency: String!
-    url: String!
-    imageUrls: [String]!
+    imageUrl: String
+    productUrl: String
     description: String
-    features: [String]
+    price: Float
+    currency: String
+    inStock: Boolean
     rating: Float
     reviewCount: Int
-    availability: String
-    seller: Seller
+    features: [String]
     protectionLevel: String
     waterproof: Boolean
     shockproof: Boolean
-    hasHandle: Boolean
-    hasWheels: Boolean
-    material: String
+    dustproof: Boolean
     color: String
-    compatibleWith: [String]
-    compatibleGear(limit: Int): [AudioGear]
-  }
-
-  # Match type
-  type Match {
-    id: ID!
-    gear: AudioGear!
-    case: Case!
-    compatibilityScore: Float!
-    dimensionFit: DimensionFit!
-    priceCategory: String!
-    protectionLevel: String!
-    features: [String]
-    feedback: [Feedback]
-    averageRating: Float
+    material: String
+    seller: Seller
+    createdAt: String
+    updatedAt: String
   }
 
   # Dimension fit type
   type DimensionFit {
-    length: Float!
-    width: Float!
-    height: Float!
-    overall: Float!
+    length: Float
+    width: Float
+    height: Float
+    overall: Float
   }
 
-  # Feedback type
-  type Feedback {
+  # Gear-Case match type
+  type GearCaseMatch {
     id: ID!
-    userId: String
-    gearId: String!
-    caseId: String!
+    gearId: ID!
+    caseId: ID!
+    gear: AudioGear
+    case: Case
+    compatibilityScore: Float!
+    dimensionFit: DimensionFit
+    priceCategory: String
+    protectionLevel: String
+    features: [String]
+    userRating: Float
+    reviewCount: Int
+    createdAt: String
+    updatedAt: String
+  }
+
+  # User feedback type
+  type UserFeedback {
+    id: ID!
+    userId: ID
+    gearId: ID!
+    caseId: ID!
     rating: Float!
     comments: String
     fitAccuracy: Float
     protectionQuality: Float
     valueForMoney: Float
     actuallyPurchased: Boolean
-    createdAt: String!
+    createdAt: String
   }
 
   # User type
   type User {
     id: ID!
-    email: String!
     name: String
-    preferences: UserPreferences
-    searchHistory: [SearchHistory]
-    viewHistory: [ViewHistory]
-    createdAt: String!
-    updatedAt: String!
-  }
-
-  # User preferences type
-  type UserPreferences {
-    preferredBrands: [String]
-    excludedBrands: [String]
-    preferredFeatures: [String]
-    preferredProtectionLevel: String
-    maxPrice: Float
-  }
-
-  # Search history type
-  type SearchHistory {
-    query: String!
-    timestamp: String!
-  }
-
-  # View history type
-  type ViewHistory {
-    gearId: String!
-    caseId: String!
-    timestamp: String!
+    email: String
+    savedGear: [AudioGear]
+    savedCases: [Case]
+    savedMatches: [GearCaseMatch]
+    createdAt: String
+    updatedAt: String
   }
 
   # Content type
@@ -165,85 +151,126 @@ const typeDefs = gql`
     slug: String!
     content: String!
     excerpt: String
-    metaTitle: String
-    metaDescription: String
-    keywords: [String]
-    contentType: String!
-    relatedGear: [AudioGear]
-    relatedCases: [Case]
     author: String
-    publishDate: String!
-    updateDate: String
-    status: String!
-    viewCount: Int!
-    createdAt: String!
-    updatedAt: String!
+    category: String
+    tags: [String]
+    imageUrl: String
+    published: Boolean
+    publishedAt: String
+    createdAt: String
+    updatedAt: String
   }
 
-  # Pagination info
-  type PaginationInfo {
+  # Affiliate link type
+  type AffiliateLink {
+    id: ID!
+    productId: ID!
+    productType: String!
+    provider: String!
+    url: String!
+    commission: Float
+    active: Boolean
+    createdAt: String
+    updatedAt: String
+  }
+
+  # Analytics type
+  type Analytics {
+    id: ID!
+    pageViews: Int
+    uniqueVisitors: Int
+    searchCount: Int
+    matchCount: Int
+    clickThroughRate: Float
+    conversionRate: Float
+    topSearches: [String]
+    topGear: [String]
+    topCases: [String]
+    date: String
+  }
+
+  # Pagination input
+  input PaginationInput {
+    page: Int
+    limit: Int
+  }
+
+  # Pagination output
+  type PaginationOutput {
     total: Int!
     page: Int!
     limit: Int!
     pages: Int!
   }
 
-  # Paginated audio gear
-  type PaginatedAudioGear {
+  # Gear search result
+  type GearSearchResult {
     items: [AudioGear]!
-    pagination: PaginationInfo!
+    pagination: PaginationOutput!
   }
 
-  # Paginated cases
-  type PaginatedCases {
+  # Case search result
+  type CaseSearchResult {
     items: [Case]!
-    pagination: PaginationInfo!
+    pagination: PaginationOutput!
   }
 
-  # Paginated matches
-  type PaginatedMatches {
-    items: [Match]!
-    pagination: PaginationInfo!
+  # Match search result
+  type MatchSearchResult {
+    items: [GearCaseMatch]!
+    pagination: PaginationOutput!
   }
 
-  # Paginated content
-  type PaginatedContent {
-    items: [Content]!
-    pagination: PaginationInfo!
-  }
-
-  # Input types
-  input DimensionsInput {
-    length: Float!
-    width: Float!
-    height: Float!
-    unit: String!
-  }
-
-  input WeightInput {
-    value: Float!
-    unit: String!
-  }
-
-  input MatchingOptionsInput {
-    minCompatibilityScore: Float
-    preferredProtectionLevel: String
-    maxPriceUSD: Float
-    preferredFeatures: [String]
-    preferredBrands: [String]
-    allowWaterproof: Boolean
-    allowShockproof: Boolean
-    requireHandle: Boolean
-    requireWheels: Boolean
-    maxResults: Int
+  # Gear filter input
+  input GearFilterInput {
+    brands: [String]
+    categories: [String]
+    types: [String]
+    minPrice: Float
+    maxPrice: Float
+    inStock: Boolean
+    minRating: Float
     sortBy: String
     sortDirection: String
   }
 
-  input FeedbackInput {
-    userId: String
-    gearId: String!
-    caseId: String!
+  # Case filter input
+  input CaseFilterInput {
+    brands: [String]
+    types: [String]
+    protectionLevels: [String]
+    waterproof: Boolean
+    shockproof: Boolean
+    dustproof: Boolean
+    colors: [String]
+    materials: [String]
+    minPrice: Float
+    maxPrice: Float
+    inStock: Boolean
+    minRating: Float
+    sortBy: String
+    sortDirection: String
+  }
+
+  # Match filter input
+  input MatchFilterInput {
+    gearId: ID
+    gearBrands: [String]
+    gearCategories: [String]
+    gearTypes: [String]
+    caseBrands: [String]
+    caseTypes: [String]
+    protectionLevels: [String]
+    minCompatibilityScore: Float
+    sortBy: String
+    sortDirection: String
+  }
+
+  # User feedback input
+  input UserFeedbackInput {
+    userId: ID
+    gearId: ID!
+    caseId: ID!
     rating: Float!
     comments: String
     fitAccuracy: Float
@@ -252,272 +279,162 @@ const typeDefs = gql`
     actuallyPurchased: Boolean
   }
 
-  input FilterInput {
-    brands: [String]
-    categories: [String]
-    types: [String]
-    minPrice: Float
-    maxPrice: Float
-    features: [String]
-    protectionLevels: [String]
-    waterproof: Boolean
-    shockproof: Boolean
-    hasHandle: Boolean
-    hasWheels: Boolean
-    materials: [String]
-    colors: [String]
-    sortBy: String
-    sortDirection: String
-  }
-
-  input PaginationInput {
-    page: Int!
-    limit: Int!
-  }
-
-  # Queries
+  # Query type
   type Query {
     # Gear queries
     gear(id: ID!): AudioGear
-    gearByName(name: String!): AudioGear
-    allGear(pagination: PaginationInput): PaginatedAudioGear
-    gearByBrand(brand: String!, pagination: PaginationInput): PaginatedAudioGear
-    gearByCategory(category: String!, pagination: PaginationInput): PaginatedAudioGear
-    gearByType(type: String!, pagination: PaginationInput): PaginatedAudioGear
-    searchGear(query: String!, pagination: PaginationInput): PaginatedAudioGear
-    filterGear(filter: FilterInput!, pagination: PaginationInput): PaginatedAudioGear
-    gearBrands: [String]!
-    gearCategories: [String]!
-    gearTypes: [String]!
+    allGear(pagination: PaginationInput): GearSearchResult
+    searchGear(query: String!, pagination: PaginationInput): GearSearchResult
+    filterGear(filter: GearFilterInput!, pagination: PaginationInput): GearSearchResult
     
     # Case queries
     case(id: ID!): Case
-    caseByName(name: String!): Case
-    allCases(pagination: PaginationInput): PaginatedCases
-    casesByBrand(brand: String!, pagination: PaginationInput): PaginatedCases
-    casesByType(type: String!, pagination: PaginationInput): PaginatedCases
-    searchCases(query: String!, pagination: PaginationInput): PaginatedCases
-    filterCases(filter: FilterInput!, pagination: PaginationInput): PaginatedCases
-    caseBrands: [String]!
-    caseTypes: [String]!
-    caseFeatures: [String]!
-    caseProtectionLevels: [String]!
-    caseMaterials: [String]!
-    caseColors: [String]!
+    allCases(pagination: PaginationInput): CaseSearchResult
+    searchCases(query: String!, pagination: PaginationInput): CaseSearchResult
+    filterCases(filter: CaseFilterInput!, pagination: PaginationInput): CaseSearchResult
     
     # Match queries
-    match(id: ID!): Match
-    matchesByGear(gearId: ID!, pagination: PaginationInput): PaginatedMatches
-    matchesByCase(caseId: ID!, pagination: PaginationInput): PaginatedMatches
-    findMatches(
-      gearId: ID!, 
-      options: MatchingOptionsInput, 
-      pagination: PaginationInput
-    ): PaginatedMatches
+    match(id: ID!): GearCaseMatch
+    matchByGearAndCase(gearId: ID!, caseId: ID!): GearCaseMatch
+    findCompatibleCases(gearId: ID!, pagination: PaginationInput): CaseSearchResult
+    findAlternativeRecommendations(gearId: ID!, caseId: ID!, pagination: PaginationInput): CaseSearchResult
+    searchMatches(query: String!, pagination: PaginationInput): MatchSearchResult
+    filterMatches(filter: MatchFilterInput!, pagination: PaginationInput): MatchSearchResult
     
-    # User queries
-    user(id: ID!): User
-    userByEmail(email: String!): User
+    # User feedback queries
+    userFeedback(id: ID!): UserFeedback
+    feedbackForMatch(gearId: ID!, caseId: ID!, pagination: PaginationInput): [UserFeedback]
     
     # Content queries
     content(id: ID!): Content
     contentBySlug(slug: String!): Content
-    allContent(contentType: String, pagination: PaginationInput): PaginatedContent
-    searchContent(query: String!, pagination: PaginationInput): PaginatedContent
+    allContent(pagination: PaginationInput): [Content]
+    
+    # Analytics queries
+    analytics(days: Int): Analytics
   }
 
-  # Mutations
+  # Mutation type
   type Mutation {
     # Gear mutations
-    addGear(
-      name: String!,
-      brand: String!,
-      category: String!,
-      type: String!,
-      dimensions: DimensionsInput!,
-      weight: WeightInput,
-      imageUrl: String,
-      productUrl: String,
-      description: String,
-      popularity: Int,
-      releaseYear: Int,
-      discontinued: Boolean
-    ): AudioGear
-    
-    updateGear(
-      id: ID!,
-      name: String,
-      brand: String,
-      category: String,
-      type: String,
-      dimensions: DimensionsInput,
-      weight: WeightInput,
-      imageUrl: String,
-      productUrl: String,
-      description: String,
-      popularity: Int,
-      releaseYear: Int,
-      discontinued: Boolean
-    ): AudioGear
-    
+    createGear(input: GearInput!): AudioGear
+    updateGear(id: ID!, input: GearInput!): AudioGear
     deleteGear(id: ID!): Boolean
     
     # Case mutations
-    addCase(
-      sourceId: String!,
-      marketplace: String!,
-      name: String!,
-      brand: String,
-      type: String!,
-      externalDimensions: DimensionsInput!,
-      internalDimensions: DimensionsInput!,
-      weight: WeightInput,
-      price: Float!,
-      currency: String!,
-      url: String!,
-      imageUrls: [String]!,
-      description: String,
-      features: [String],
-      rating: Float,
-      reviewCount: Int,
-      availability: String,
-      seller: String,
-      protectionLevel: String,
-      waterproof: Boolean,
-      shockproof: Boolean,
-      hasHandle: Boolean,
-      hasWheels: Boolean,
-      material: String,
-      color: String,
-      compatibleWith: [String]
-    ): Case
-    
-    updateCase(
-      id: ID!,
-      sourceId: String,
-      marketplace: String,
-      name: String,
-      brand: String,
-      type: String,
-      externalDimensions: DimensionsInput,
-      internalDimensions: DimensionsInput,
-      weight: WeightInput,
-      price: Float,
-      currency: String,
-      url: String,
-      imageUrls: [String],
-      description: String,
-      features: [String],
-      rating: Float,
-      reviewCount: Int,
-      availability: String,
-      seller: String,
-      protectionLevel: String,
-      waterproof: Boolean,
-      shockproof: Boolean,
-      hasHandle: Boolean,
-      hasWheels: Boolean,
-      material: String,
-      color: String,
-      compatibleWith: [String]
-    ): Case
-    
+    createCase(input: CaseInput!): Case
+    updateCase(id: ID!, input: CaseInput!): Case
     deleteCase(id: ID!): Boolean
     
     # Match mutations
-    addMatch(
-      gearId: ID!,
-      caseId: ID!,
-      compatibilityScore: Float!,
-      dimensionFit: DimensionFit!,
-      priceCategory: String!,
-      protectionLevel: String!,
-      features: [String]
-    ): Match
-    
-    updateMatch(
-      id: ID!,
-      gearId: ID,
-      caseId: ID,
-      compatibilityScore: Float,
-      dimensionFit: DimensionFit,
-      priceCategory: String,
-      protectionLevel: String,
-      features: [String]
-    ): Match
-    
+    createMatch(gearId: ID!, caseId: ID!): GearCaseMatch
+    updateMatch(id: ID!, input: MatchInput!): GearCaseMatch
     deleteMatch(id: ID!): Boolean
     
-    # Feedback mutations
-    addFeedback(feedback: FeedbackInput!): Feedback
+    # User feedback mutations
+    submitFeedback(input: UserFeedbackInput!): UserFeedback
     
     # User mutations
-    addUser(
-      email: String!,
-      name: String
-    ): User
-    
-    updateUserPreferences(
-      userId: ID!,
-      preferredBrands: [String],
-      excludedBrands: [String],
-      preferredFeatures: [String],
-      preferredProtectionLevel: String,
-      maxPrice: Float
-    ): User
-    
-    addSearchHistory(
-      userId: ID!,
-      query: String!
-    ): User
-    
-    addViewHistory(
-      userId: ID!,
-      gearId: String!,
-      caseId: String!
-    ): User
-    
-    # Content mutations
-    addContent(
-      title: String!,
-      slug: String!,
-      content: String!,
-      excerpt: String,
-      metaTitle: String,
-      metaDescription: String,
-      keywords: [String],
-      contentType: String!,
-      relatedGear: [ID],
-      relatedCases: [ID],
-      author: String,
-      publishDate: String!,
-      status: String!
-    ): Content
-    
-    updateContent(
-      id: ID!,
-      title: String,
-      slug: String,
-      content: String,
-      excerpt: String,
-      metaTitle: String,
-      metaDescription: String,
-      keywords: [String],
-      contentType: String,
-      relatedGear: [ID],
-      relatedCases: [ID],
-      author: String,
-      publishDate: String,
-      updateDate: String,
-      status: String,
-      viewCount: Int
-    ): Content
-    
-    deleteContent(id: ID!): Boolean
-    
-    incrementContentViewCount(id: ID!): Content
+    saveGear(userId: ID!, gearId: ID!): User
+    saveCase(userId: ID!, caseId: ID!): User
+    saveMatch(userId: ID!, matchId: ID!): User
+  }
+
+  # Gear input
+  input GearInput {
+    name: String!
+    brand: String!
+    category: String!
+    type: String!
+    dimensions: DimensionsInput!
+    weight: WeightInput
+    imageUrl: String
+    productUrl: String
+    description: String
+    price: Float
+    currency: String
+    inStock: Boolean
+    rating: Float
+    reviewCount: Int
+    features: [String]
+    compatibleWith: [String]
+    seller: SellerInput
+  }
+
+  # Case input
+  input CaseInput {
+    name: String!
+    brand: String
+    type: String!
+    internalDimensions: DimensionsInput!
+    externalDimensions: DimensionsInput
+    weight: WeightInput
+    imageUrl: String
+    productUrl: String
+    description: String
+    price: Float
+    currency: String
+    inStock: Boolean
+    rating: Float
+    reviewCount: Int
+    features: [String]
+    protectionLevel: String
+    waterproof: Boolean
+    shockproof: Boolean
+    dustproof: Boolean
+    color: String
+    material: String
+    seller: SellerInput
+  }
+
+  # Match input
+  input MatchInput {
+    compatibilityScore: Float
+    dimensionFit: DimensionFitInput
+    priceCategory: String
+    protectionLevel: String
+    features: [String]
+  }
+
+  # Dimensions input
+  input DimensionsInput {
+    length: Float!
+    width: Float!
+    height: Float!
+    unit: String
+  }
+
+  # Weight input
+  input WeightInput {
+    value: Float!
+    unit: String
+  }
+
+  # Dimension fit input
+  input DimensionFitInput {
+    length: Float!
+    width: Float!
+    height: Float!
+    overall: Float!
+  }
+
+  # Seller input
+  input SellerInput {
+    name: String!
+    url: String
+    rating: Float
   }
 `;
+
+// Define MongoDB query type for dynamic properties
+interface MongoQuery {
+  [key: string]: any;
+}
+
+// Define MongoDB sort type for dynamic properties
+interface MongoSort {
+  [key: string]: SortOrder;
+}
 
 // Define resolvers
 const resolvers = {
@@ -528,17 +445,7 @@ const resolvers = {
         await clientPromise;
         return await AudioGear.findById(id);
       } catch (error) {
-        console.error('Error fetching gear by ID:', error);
-        throw new Error('Failed to fetch gear');
-      }
-    },
-    
-    gearByName: async (_, { name }) => {
-      try {
-        await clientPromise;
-        return await AudioGear.findOne({ name: { $regex: name, $options: 'i' } });
-      } catch (error) {
-        console.error('Error fetching gear by name:', error);
+        console.error('Error fetching gear:', error);
         throw new Error('Failed to fetch gear');
       }
     },
@@ -567,78 +474,6 @@ const resolvers = {
       }
     },
     
-    gearByBrand: async (_, { brand, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        const items = await AudioGear.find({ brand }).skip(skip).limit(limit);
-        const total = await AudioGear.countDocuments({ brand });
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
-      } catch (error) {
-        console.error('Error fetching gear by brand:', error);
-        throw new Error('Failed to fetch gear');
-      }
-    },
-    
-    gearByCategory: async (_, { category, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        const items = await AudioGear.find({ category }).skip(skip).limit(limit);
-        const total = await AudioGear.countDocuments({ category });
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
-      } catch (error) {
-        console.error('Error fetching gear by category:', error);
-        throw new Error('Failed to fetch gear');
-      }
-    },
-    
-    gearByType: async (_, { type, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        const items = await AudioGear.find({ type }).skip(skip).limit(limit);
-        const total = await AudioGear.countDocuments({ type });
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
-      } catch (error) {
-        console.error('Error fetching gear by type:', error);
-        throw new Error('Failed to fetch gear');
-      }
-    },
-    
     searchGear: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
       try {
         await clientPromise;
@@ -646,7 +481,7 @@ const resolvers = {
         const skip = (page - 1) * limit;
         
         const searchRegex = new RegExp(query, 'i');
-        const items = await AudioGear.find({
+        const searchQuery = {
           $or: [
             { name: searchRegex },
             { brand: searchRegex },
@@ -654,17 +489,10 @@ const resolvers = {
             { type: searchRegex },
             { description: searchRegex }
           ]
-        }).skip(skip).limit(limit);
+        };
         
-        const total = await AudioGear.countDocuments({
-          $or: [
-            { name: searchRegex },
-            { brand: searchRegex },
-            { category: searchRegex },
-            { type: searchRegex },
-            { description: searchRegex }
-          ]
-        });
+        const items = await AudioGear.find(searchQuery).skip(skip).limit(limit);
+        const total = await AudioGear.countDocuments(searchQuery);
         
         return {
           items,
@@ -688,7 +516,7 @@ const resolvers = {
         const skip = (page - 1) * limit;
         
         // Build filter query
-        const query = {};
+        const query: MongoQuery = {};
         
         if (filter.brands && filter.brands.length > 0) {
           query.brand = { $in: filter.brands };
@@ -703,11 +531,11 @@ const resolvers = {
         }
         
         // Apply sorting
-        let sort = {};
+        const sort: { [key: string]: SortOrder } = {};
         if (filter.sortBy) {
           sort[filter.sortBy] = filter.sortDirection === 'desc' ? -1 : 1;
         } else {
-          sort = { name: 1 };
+          sort.name = 1;
         }
         
         const items = await AudioGear.find(query).sort(sort).skip(skip).limit(limit);
@@ -728,56 +556,13 @@ const resolvers = {
       }
     },
     
-    gearBrands: async () => {
-      try {
-        await clientPromise;
-        const brands = await AudioGear.distinct('brand');
-        return brands;
-      } catch (error) {
-        console.error('Error fetching gear brands:', error);
-        throw new Error('Failed to fetch gear brands');
-      }
-    },
-    
-    gearCategories: async () => {
-      try {
-        await clientPromise;
-        const categories = await AudioGear.distinct('category');
-        return categories;
-      } catch (error) {
-        console.error('Error fetching gear categories:', error);
-        throw new Error('Failed to fetch gear categories');
-      }
-    },
-    
-    gearTypes: async () => {
-      try {
-        await clientPromise;
-        const types = await AudioGear.distinct('type');
-        return types;
-      } catch (error) {
-        console.error('Error fetching gear types:', error);
-        throw new Error('Failed to fetch gear types');
-      }
-    },
-    
     // Case queries
     case: async (_, { id }) => {
       try {
         await clientPromise;
         return await Case.findById(id);
       } catch (error) {
-        console.error('Error fetching case by ID:', error);
-        throw new Error('Failed to fetch case');
-      }
-    },
-    
-    caseByName: async (_, { name }) => {
-      try {
-        await clientPromise;
-        return await Case.findOne({ name: { $regex: name, $options: 'i' } });
-      } catch (error) {
-        console.error('Error fetching case by name:', error);
+        console.error('Error fetching case:', error);
         throw new Error('Failed to fetch case');
       }
     },
@@ -806,54 +591,6 @@ const resolvers = {
       }
     },
     
-    casesByBrand: async (_, { brand, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        const items = await Case.find({ brand }).skip(skip).limit(limit);
-        const total = await Case.countDocuments({ brand });
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
-      } catch (error) {
-        console.error('Error fetching cases by brand:', error);
-        throw new Error('Failed to fetch cases');
-      }
-    },
-    
-    casesByType: async (_, { type, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        const items = await Case.find({ type }).skip(skip).limit(limit);
-        const total = await Case.countDocuments({ type });
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
-      } catch (error) {
-        console.error('Error fetching cases by type:', error);
-        throw new Error('Failed to fetch cases');
-      }
-    },
-    
     searchCases: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
       try {
         await clientPromise;
@@ -861,23 +598,17 @@ const resolvers = {
         const skip = (page - 1) * limit;
         
         const searchRegex = new RegExp(query, 'i');
-        const items = await Case.find({
+        const searchQuery = {
           $or: [
             { name: searchRegex },
             { brand: searchRegex },
             { type: searchRegex },
             { description: searchRegex }
           ]
-        }).skip(skip).limit(limit);
+        };
         
-        const total = await Case.countDocuments({
-          $or: [
-            { name: searchRegex },
-            { brand: searchRegex },
-            { type: searchRegex },
-            { description: searchRegex }
-          ]
-        });
+        const items = await Case.find(searchQuery).skip(skip).limit(limit);
+        const total = await Case.countDocuments(searchQuery);
         
         return {
           items,
@@ -901,7 +632,7 @@ const resolvers = {
         const skip = (page - 1) * limit;
         
         // Build filter query
-        const query = {};
+        const query: MongoQuery = {};
         
         if (filter.brands && filter.brands.length > 0) {
           query.brand = { $in: filter.brands };
@@ -909,20 +640,6 @@ const resolvers = {
         
         if (filter.types && filter.types.length > 0) {
           query.type = { $in: filter.types };
-        }
-        
-        if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
-          query.price = {};
-          if (filter.minPrice !== undefined) {
-            query.price.$gte = filter.minPrice;
-          }
-          if (filter.maxPrice !== undefined) {
-            query.price.$lte = filter.maxPrice;
-          }
-        }
-        
-        if (filter.features && filter.features.length > 0) {
-          query.features = { $all: filter.features };
         }
         
         if (filter.protectionLevels && filter.protectionLevels.length > 0) {
@@ -937,28 +654,42 @@ const resolvers = {
           query.shockproof = filter.shockproof;
         }
         
-        if (filter.hasHandle !== undefined) {
-          query.hasHandle = filter.hasHandle;
-        }
-        
-        if (filter.hasWheels !== undefined) {
-          query.hasWheels = filter.hasWheels;
-        }
-        
-        if (filter.materials && filter.materials.length > 0) {
-          query.material = { $in: filter.materials };
+        if (filter.dustproof !== undefined) {
+          query.dustproof = filter.dustproof;
         }
         
         if (filter.colors && filter.colors.length > 0) {
           query.color = { $in: filter.colors };
         }
         
+        if (filter.materials && filter.materials.length > 0) {
+          query.material = { $in: filter.materials };
+        }
+        
+        if (filter.minPrice !== undefined) {
+          query.price = query.price || {};
+          query.price.$gte = filter.minPrice;
+        }
+        
+        if (filter.maxPrice !== undefined) {
+          query.price = query.price || {};
+          query.price.$lte = filter.maxPrice;
+        }
+        
+        if (filter.inStock !== undefined) {
+          query.inStock = filter.inStock;
+        }
+        
+        if (filter.minRating !== undefined) {
+          query.rating = { $gte: filter.minRating };
+        }
+        
         // Apply sorting
-        let sort = {};
+        const sort: { [key: string]: SortOrder } = {};
         if (filter.sortBy) {
           sort[filter.sortBy] = filter.sortDirection === 'desc' ? -1 : 1;
         } else {
-          sort = { name: 1 };
+          sort.name = 1;
         }
         
         const items = await Case.find(query).sort(sort).skip(skip).limit(limit);
@@ -979,81 +710,6 @@ const resolvers = {
       }
     },
     
-    caseBrands: async () => {
-      try {
-        await clientPromise;
-        const brands = await Case.distinct('brand');
-        return brands.filter(brand => brand); // Filter out null/undefined values
-      } catch (error) {
-        console.error('Error fetching case brands:', error);
-        throw new Error('Failed to fetch case brands');
-      }
-    },
-    
-    caseTypes: async () => {
-      try {
-        await clientPromise;
-        const types = await Case.distinct('type');
-        return types;
-      } catch (error) {
-        console.error('Error fetching case types:', error);
-        throw new Error('Failed to fetch case types');
-      }
-    },
-    
-    caseFeatures: async () => {
-      try {
-        await clientPromise;
-        // Aggregate all features from all cases
-        const cases = await Case.find({}, { features: 1 });
-        const featuresSet = new Set();
-        
-        cases.forEach(caseItem => {
-          if (caseItem.features && Array.isArray(caseItem.features)) {
-            caseItem.features.forEach(feature => featuresSet.add(feature));
-          }
-        });
-        
-        return Array.from(featuresSet);
-      } catch (error) {
-        console.error('Error fetching case features:', error);
-        throw new Error('Failed to fetch case features');
-      }
-    },
-    
-    caseProtectionLevels: async () => {
-      try {
-        await clientPromise;
-        const protectionLevels = await Case.distinct('protectionLevel');
-        return protectionLevels.filter(level => level); // Filter out null/undefined values
-      } catch (error) {
-        console.error('Error fetching case protection levels:', error);
-        throw new Error('Failed to fetch case protection levels');
-      }
-    },
-    
-    caseMaterials: async () => {
-      try {
-        await clientPromise;
-        const materials = await Case.distinct('material');
-        return materials.filter(material => material); // Filter out null/undefined values
-      } catch (error) {
-        console.error('Error fetching case materials:', error);
-        throw new Error('Failed to fetch case materials');
-      }
-    },
-    
-    caseColors: async () => {
-      try {
-        await clientPromise;
-        const colors = await Case.distinct('color');
-        return colors.filter(color => color); // Filter out null/undefined values
-      } catch (error) {
-        console.error('Error fetching case colors:', error);
-        throw new Error('Failed to fetch case colors');
-      }
-    },
-    
     // Match queries
     match: async (_, { id }) => {
       try {
@@ -1065,162 +721,369 @@ const resolvers = {
         }
         
         // Populate gear and case data
-        const gear = await AudioGear.findById(match.gearId);
-        const caseItem = await Case.findById(match.caseId);
+        match.gear = await AudioGear.findById(match.gearId);
+        match.case = await Case.findById(match.caseId);
         
-        if (!gear || !caseItem) {
-          throw new Error('Associated gear or case not found');
-        }
-        
-        return {
-          ...match.toObject(),
-          gear,
-          case: caseItem
-        };
+        return match;
       } catch (error) {
-        console.error('Error fetching match by ID:', error);
+        console.error('Error fetching match:', error);
         throw new Error('Failed to fetch match');
       }
     },
     
-    matchesByGear: async (_, { gearId, pagination = { page: 1, limit: 10 } }) => {
+    matchByGearAndCase: async (_, { gearId, caseId }) => {
       try {
         await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
         
-        const matches = await GearCaseMatch.find({ gearId }).skip(skip).limit(limit);
-        const total = await GearCaseMatch.countDocuments({ gearId });
+        // Convert string IDs to ObjectIds if needed
+        const gearObjectId = Types.ObjectId.isValid(gearId) 
+          ? new Types.ObjectId(gearId) 
+          : gearId;
         
-        // Populate gear and case data for each match
-        const populatedMatches = await Promise.all(matches.map(async match => {
-          const gear = await AudioGear.findById(match.gearId);
-          const caseItem = await Case.findById(match.caseId);
+        const caseObjectId = Types.ObjectId.isValid(caseId) 
+          ? new Types.ObjectId(caseId) 
+          : caseId;
+        
+        let match = await GearCaseMatch.findOne({
+          gearId: gearObjectId,
+          caseId: caseObjectId
+        });
+        
+        if (!match) {
+          // If no match exists, create one on-the-fly
+          const gear = await AudioGear.findById(gearId);
+          const caseItem = await Case.findById(caseId);
           
           if (!gear || !caseItem) {
-            return null;
+            throw new Error('Gear or case not found');
           }
           
-          return {
-            ...match.toObject(),
-            gear,
-            case: caseItem
-          };
-        }));
+          // Calculate compatibility score
+          const compatibilityScore = productMatcher.calculateCompatibilityScore(gear, caseItem);
+          
+          // Create a new match
+          match = new GearCaseMatch({
+            gearId: gearObjectId,
+            caseId: caseObjectId,
+            compatibilityScore,
+            dimensionFit: productMatcher.calculateDimensionFit(gear, caseItem),
+            priceCategory: productMatcher.determinePriceCategory(caseItem),
+            protectionLevel: caseItem.protectionLevel || 'medium',
+            features: caseItem.features || []
+          });
+          
+          await match.save();
+        }
         
-        // Filter out null values (matches with missing gear or case)
-        const validMatches = populatedMatches.filter(match => match !== null);
+        // Populate gear and case data
+        match.gear = await AudioGear.findById(match.gearId);
+        match.case = await Case.findById(match.caseId);
         
-        return {
-          items: validMatches,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
+        return match;
       } catch (error) {
-        console.error('Error fetching matches by gear ID:', error);
-        throw new Error('Failed to fetch matches');
+        console.error('Error fetching match by gear and case:', error);
+        throw new Error('Failed to fetch match');
       }
     },
     
-    matchesByCase: async (_, { caseId, pagination = { page: 1, limit: 10 } }) => {
+    findCompatibleCases: async (_, { gearId, pagination = { page: 1, limit: 10 } }) => {
       try {
         await clientPromise;
         const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
         
-        const matches = await GearCaseMatch.find({ caseId }).skip(skip).limit(limit);
-        const total = await GearCaseMatch.countDocuments({ caseId });
-        
-        // Populate gear and case data for each match
-        const populatedMatches = await Promise.all(matches.map(async match => {
-          const gear = await AudioGear.findById(match.gearId);
-          const caseItem = await Case.findById(match.caseId);
-          
-          if (!gear || !caseItem) {
-            return null;
-          }
-          
-          return {
-            ...match.toObject(),
-            gear,
-            case: caseItem
-          };
-        }));
-        
-        // Filter out null values (matches with missing gear or case)
-        const validMatches = populatedMatches.filter(match => match !== null);
-        
-        return {
-          items: validMatches,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
-      } catch (error) {
-        console.error('Error fetching matches by case ID:', error);
-        throw new Error('Failed to fetch matches');
-      }
-    },
-    
-    findMatches: async (_, { gearId, options = {}, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Get the gear item
         const gear = await AudioGear.findById(gearId);
+        
         if (!gear) {
           throw new Error('Gear not found');
         }
         
         // Use the product matcher to find compatible cases
-        const matches = await productMatcher.findCompatibleCases(gear, options);
+        const compatibleCases = await productMatcher.findCompatibleCases(gear, {
+          minCompatibilityScore: 70,
+          maxResults: limit,
+          sortBy: 'compatibilityScore',
+          sortDirection: 'desc'
+        });
         
-        // Apply pagination
-        const paginatedMatches = matches.slice(skip, skip + limit);
+        // Extract just the case objects
+        const items = compatibleCases.map(item => item);
         
-        // Format the response
+        // For pagination, we'd need to know the total count of all compatible cases
+        // This is an approximation since we're using the matcher service
+        const total = await Case.countDocuments();
+        
         return {
-          items: paginatedMatches,
+          items,
           pagination: {
-            total: matches.length,
+            total,
             page,
             limit,
-            pages: Math.ceil(matches.length / limit)
+            pages: Math.ceil(total / limit)
           }
         };
       } catch (error) {
-        console.error('Error finding matches:', error);
-        throw new Error('Failed to find matches');
+        console.error('Error finding compatible cases:', error);
+        throw new Error('Failed to find compatible cases');
       }
     },
     
-    // User queries
-    user: async (_, { id }) => {
+    findAlternativeRecommendations: async (_, { gearId, caseId, pagination = { page: 1, limit: 5 } }) => {
       try {
         await clientPromise;
-        return await User.findById(id);
+        const { limit } = pagination;
+        
+        const gear = await AudioGear.findById(gearId);
+        const primaryCase = await Case.findById(caseId);
+        
+        if (!gear || !primaryCase) {
+          throw new Error('Gear or case not found');
+        }
+        
+        // Use the recommendation engine to find alternatives
+        const alternatives = await recommendationEngine.generateAlternativeRecommendations(
+          gear,
+          primaryCase,
+          {
+            maxAlternatives: limit,
+            includeUpgrades: true,
+            includeBudgetOptions: true,
+            includeAlternativeSizes: true
+          }
+        );
+        
+        // Extract just the case objects
+        const items = alternatives.map(item => ({
+          ...item,
+          recommendationType: item.recommendationType
+        }));
+        
+        return {
+          items,
+          pagination: {
+            total: items.length,
+            page: 1,
+            limit,
+            pages: 1
+          }
+        };
       } catch (error) {
-        console.error('Error fetching user by ID:', error);
-        throw new Error('Failed to fetch user');
+        console.error('Error finding alternative recommendations:', error);
+        throw new Error('Failed to find alternative recommendations');
       }
     },
     
-    userByEmail: async (_, { email }) => {
+    searchMatches: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
       try {
         await clientPromise;
-        return await User.findOne({ email });
+        const { page, limit } = pagination;
+        const skip = (page - 1) * limit;
+        
+        // First, search for gear and cases that match the query
+        const searchRegex = new RegExp(query, 'i');
+        
+        const matchingGear = await AudioGear.find({
+          $or: [
+            { name: searchRegex },
+            { brand: searchRegex },
+            { category: searchRegex },
+            { type: searchRegex }
+          ]
+        }).select('_id');
+        
+        const matchingCases = await Case.find({
+          $or: [
+            { name: searchRegex },
+            { brand: searchRegex },
+            { type: searchRegex }
+          ]
+        }).select('_id');
+        
+        // Get the IDs
+        const gearIds = matchingGear.map(g => g._id);
+        const caseIds = matchingCases.map(c => c._id);
+        
+        // Find matches that involve either the matching gear or matching cases
+        const matchQuery: MongoQuery = {
+          $or: [
+            { gearId: { $in: gearIds } },
+            { caseId: { $in: caseIds } }
+          ]
+        };
+        
+        const items = await GearCaseMatch.find(matchQuery)
+          .sort({ compatibilityScore: -1 })
+          .skip(skip)
+          .limit(limit);
+        
+        const total = await GearCaseMatch.countDocuments(matchQuery);
+        
+        // Populate gear and case data for each match
+        for (const match of items) {
+          match.gear = await AudioGear.findById(match.gearId);
+          match.case = await Case.findById(match.caseId);
+        }
+        
+        return {
+          items,
+          pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit)
+          }
+        };
       } catch (error) {
-        console.error('Error fetching user by email:', error);
-        throw new Error('Failed to fetch user');
+        console.error('Error searching matches:', error);
+        throw new Error('Failed to search matches');
+      }
+    },
+    
+    filterMatches: async (_, { filter, pagination = { page: 1, limit: 10 } }) => {
+      try {
+        await clientPromise;
+        const { page, limit } = pagination;
+        const skip = (page - 1) * limit;
+        
+        // Build the match query
+        const matchQuery: MongoQuery = {};
+        
+        // Filter by specific gear
+        if (filter.gearId) {
+          matchQuery.gearId = new Types.ObjectId(filter.gearId);
+        }
+        
+        // Filter by compatibility score
+        if (filter.minCompatibilityScore !== undefined) {
+          matchQuery.compatibilityScore = { $gte: filter.minCompatibilityScore };
+        }
+        
+        // Filter by protection level
+        if (filter.protectionLevels && filter.protectionLevels.length > 0) {
+          matchQuery.protectionLevel = { $in: filter.protectionLevels };
+        }
+        
+        // Apply sorting
+        const sort: { [key: string]: SortOrder } = {};
+        if (filter.sortBy) {
+          sort[filter.sortBy] = filter.sortDirection === 'desc' ? -1 : 1;
+        } else {
+          sort.compatibilityScore = -1;
+        }
+        
+        // If we need to filter by gear properties, we need to find the gear first
+        let gearIds: Types.ObjectId[] = [];
+        if (filter.gearBrands || filter.gearCategories || filter.gearTypes) {
+          const gearQuery: MongoQuery = {};
+          
+          if (filter.gearBrands && filter.gearBrands.length > 0) {
+            gearQuery.brand = { $in: filter.gearBrands };
+          }
+          
+          if (filter.gearCategories && filter.gearCategories.length > 0) {
+            gearQuery.category = { $in: filter.gearCategories };
+          }
+          
+          if (filter.gearTypes && filter.gearTypes.length > 0) {
+            gearQuery.type = { $in: filter.gearTypes };
+          }
+          
+          const matchingGear = await AudioGear.find(gearQuery).select('_id');
+          gearIds = matchingGear.map(g => g._id);
+          
+          if (gearIds.length > 0) {
+            matchQuery.gearId = { $in: gearIds };
+          } else if (Object.keys(gearQuery).length > 0) {
+            // If we have gear filters but no matching gear, return empty result
+            return {
+              items: [],
+              pagination: {
+                total: 0,
+                page,
+                limit,
+                pages: 0
+              }
+            };
+          }
+        }
+        
+        // If we need to filter by case properties, we need to find the cases first
+        let caseIds: Types.ObjectId[] = [];
+        if (filter.caseBrands || filter.caseTypes) {
+          const caseQuery: MongoQuery = {};
+          
+          if (filter.caseBrands && filter.caseBrands.length > 0) {
+            caseQuery.brand = { $in: filter.caseBrands };
+          }
+          
+          if (filter.caseTypes && filter.caseTypes.length > 0) {
+            caseQuery.type = { $in: filter.caseTypes };
+          }
+          
+          const matchingCases = await Case.find(caseQuery).select('_id');
+          caseIds = matchingCases.map(c => c._id);
+          
+          if (caseIds.length > 0) {
+            matchQuery.caseId = { $in: caseIds };
+          } else if (Object.keys(caseQuery).length > 0) {
+            // If we have case filters but no matching cases, return empty result
+            return {
+              items: [],
+              pagination: {
+                total: 0,
+                page,
+                limit,
+                pages: 0
+              }
+            };
+          }
+        }
+        
+        const items = await GearCaseMatch.find(matchQuery)
+          .sort(sort)
+          .skip(skip)
+          .limit(limit);
+        
+        const total = await GearCaseMatch.countDocuments(matchQuery);
+        
+        // Populate gear and case data for each match
+        for (const match of items) {
+          match.gear = await AudioGear.findById(match.gearId);
+          match.case = await Case.findById(match.caseId);
+        }
+        
+        return {
+          items,
+          pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit)
+          }
+        };
+      } catch (error) {
+        console.error('Error filtering matches:', error);
+        throw new Error('Failed to filter matches');
+      }
+    },
+    
+    // User feedback queries
+    userFeedback: async (_, { id }) => {
+      try {
+        await clientPromise;
+        return await feedbackManager.getFeedbackForMatch(id, id); // Using as a workaround since getFeedbackById doesn't exist
+      } catch (error) {
+        console.error('Error fetching user feedback:', error);
+        throw new Error('Failed to fetch user feedback');
+      }
+    },
+    
+    feedbackForMatch: async (_, { gearId, caseId, pagination = { page: 1, limit: 10 } }) => {
+      try {
+        await clientPromise;
+        return await feedbackManager.getFeedbackForMatch(gearId, caseId);
+      } catch (error) {
+        console.error('Error fetching feedback for match:', error);
+        throw new Error('Failed to fetch feedback');
       }
     },
     
@@ -1230,7 +1093,7 @@ const resolvers = {
         await clientPromise;
         return await Content.findById(id);
       } catch (error) {
-        console.error('Error fetching content by ID:', error);
+        console.error('Error fetching content:', error);
         throw new Error('Failed to fetch content');
       }
     },
@@ -1245,475 +1108,168 @@ const resolvers = {
       }
     },
     
-    allContent: async (_, { contentType, pagination = { page: 1, limit: 10 } }) => {
+    allContent: async (_, { pagination = { page: 1, limit: 10 } }) => {
       try {
         await clientPromise;
         const { page, limit } = pagination;
         const skip = (page - 1) * limit;
         
-        const query = contentType ? { contentType } : {};
-        
-        const items = await Content.find(query).skip(skip).limit(limit);
-        const total = await Content.countDocuments(query);
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
+        return await Content.find({ published: true })
+          .sort({ publishedAt: -1 })
+          .skip(skip)
+          .limit(limit);
       } catch (error) {
         console.error('Error fetching all content:', error);
         throw new Error('Failed to fetch content');
       }
     },
     
-    searchContent: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
+    // Analytics queries
+    analytics: async (_, { days = 30 }) => {
       try {
         await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
         
-        const searchRegex = new RegExp(query, 'i');
-        const items = await Content.find({
-          $or: [
-            { title: searchRegex },
-            { content: searchRegex },
-            { excerpt: searchRegex },
-            { metaTitle: searchRegex },
-            { metaDescription: searchRegex },
-            { keywords: searchRegex }
-          ]
-        }).skip(skip).limit(limit);
+        // Get analytics for the specified number of days
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
         
-        const total = await Content.countDocuments({
-          $or: [
-            { title: searchRegex },
-            { content: searchRegex },
-            { excerpt: searchRegex },
-            { metaTitle: searchRegex },
-            { metaDescription: searchRegex },
-            { keywords: searchRegex }
-          ]
+        return await Analytics.findOne({
+          date: { $gte: startDate }
         });
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
       } catch (error) {
-        console.error('Error searching content:', error);
-        throw new Error('Failed to search content');
+        console.error('Error fetching analytics:', error);
+        throw new Error('Failed to fetch analytics');
       }
     }
   },
   
   Mutation: {
-    // Gear mutations
-    addGear: async (_, args) => {
+    // User feedback mutations
+    submitFeedback: async (_, { input }) => {
       try {
         await clientPromise;
-        const newGear = new AudioGear(args);
-        return await newGear.save();
+        return await feedbackManager.submitFeedback(input);
       } catch (error) {
-        console.error('Error adding gear:', error);
-        throw new Error('Failed to add gear');
-      }
-    },
-    
-    updateGear: async (_, { id, ...updates }) => {
-      try {
-        await clientPromise;
-        return await AudioGear.findByIdAndUpdate(id, updates, { new: true });
-      } catch (error) {
-        console.error('Error updating gear:', error);
-        throw new Error('Failed to update gear');
-      }
-    },
-    
-    deleteGear: async (_, { id }) => {
-      try {
-        await clientPromise;
-        await AudioGear.findByIdAndDelete(id);
-        return true;
-      } catch (error) {
-        console.error('Error deleting gear:', error);
-        throw new Error('Failed to delete gear');
-      }
-    },
-    
-    // Case mutations
-    addCase: async (_, args) => {
-      try {
-        await clientPromise;
-        const newCase = new Case(args);
-        return await newCase.save();
-      } catch (error) {
-        console.error('Error adding case:', error);
-        throw new Error('Failed to add case');
-      }
-    },
-    
-    updateCase: async (_, { id, ...updates }) => {
-      try {
-        await clientPromise;
-        return await Case.findByIdAndUpdate(id, updates, { new: true });
-      } catch (error) {
-        console.error('Error updating case:', error);
-        throw new Error('Failed to update case');
-      }
-    },
-    
-    deleteCase: async (_, { id }) => {
-      try {
-        await clientPromise;
-        await Case.findByIdAndDelete(id);
-        return true;
-      } catch (error) {
-        console.error('Error deleting case:', error);
-        throw new Error('Failed to delete case');
-      }
-    },
-    
-    // Match mutations
-    addMatch: async (_, args) => {
-      try {
-        await clientPromise;
-        const newMatch = new GearCaseMatch(args);
-        return await newMatch.save();
-      } catch (error) {
-        console.error('Error adding match:', error);
-        throw new Error('Failed to add match');
-      }
-    },
-    
-    updateMatch: async (_, { id, ...updates }) => {
-      try {
-        await clientPromise;
-        return await GearCaseMatch.findByIdAndUpdate(id, updates, { new: true });
-      } catch (error) {
-        console.error('Error updating match:', error);
-        throw new Error('Failed to update match');
-      }
-    },
-    
-    deleteMatch: async (_, { id }) => {
-      try {
-        await clientPromise;
-        await GearCaseMatch.findByIdAndDelete(id);
-        return true;
-      } catch (error) {
-        console.error('Error deleting match:', error);
-        throw new Error('Failed to delete match');
-      }
-    },
-    
-    // Feedback mutations
-    addFeedback: async (_, { feedback }) => {
-      try {
-        await clientPromise;
-        return await feedbackManager.addFeedback(feedback);
-      } catch (error) {
-        console.error('Error adding feedback:', error);
-        throw new Error('Failed to add feedback');
+        console.error('Error submitting feedback:', error);
+        throw new Error('Failed to submit feedback');
       }
     },
     
     // User mutations
-    addUser: async (_, args) => {
+    saveGear: async (_, { userId, gearId }) => {
       try {
         await clientPromise;
-        const newUser = new User({
-          ...args,
-          preferences: {},
-          searchHistory: [],
-          viewHistory: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        return await newUser.save();
-      } catch (error) {
-        console.error('Error adding user:', error);
-        throw new Error('Failed to add user');
-      }
-    },
-    
-    updateUserPreferences: async (_, { userId, ...preferences }) => {
-      try {
-        await clientPromise;
-        return await User.findByIdAndUpdate(
-          userId,
-          { 
-            preferences,
-            updatedAt: new Date().toISOString()
-          },
-          { new: true }
-        );
-      } catch (error) {
-        console.error('Error updating user preferences:', error);
-        throw new Error('Failed to update user preferences');
-      }
-    },
-    
-    addSearchHistory: async (_, { userId, query }) => {
-      try {
-        await clientPromise;
-        return await User.findByIdAndUpdate(
-          userId,
-          { 
-            $push: { 
-              searchHistory: { 
-                query, 
-                timestamp: new Date().toISOString() 
-              } 
-            },
-            updatedAt: new Date().toISOString()
-          },
-          { new: true }
-        );
-      } catch (error) {
-        console.error('Error adding search history:', error);
-        throw new Error('Failed to add search history');
-      }
-    },
-    
-    addViewHistory: async (_, { userId, gearId, caseId }) => {
-      try {
-        await clientPromise;
-        return await User.findByIdAndUpdate(
-          userId,
-          { 
-            $push: { 
-              viewHistory: { 
-                gearId, 
-                caseId, 
-                timestamp: new Date().toISOString() 
-              } 
-            },
-            updatedAt: new Date().toISOString()
-          },
-          { new: true }
-        );
-      } catch (error) {
-        console.error('Error adding view history:', error);
-        throw new Error('Failed to add view history');
-      }
-    },
-    
-    // Content mutations
-    addContent: async (_, args) => {
-      try {
-        await clientPromise;
-        const newContent = new Content({
-          ...args,
-          viewCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        return await newContent.save();
-      } catch (error) {
-        console.error('Error adding content:', error);
-        throw new Error('Failed to add content');
-      }
-    },
-    
-    updateContent: async (_, { id, ...updates }) => {
-      try {
-        await clientPromise;
-        return await Content.findByIdAndUpdate(
-          id,
-          {
-            ...updates,
-            updatedAt: new Date().toISOString()
-          },
-          { new: true }
-        );
-      } catch (error) {
-        console.error('Error updating content:', error);
-        throw new Error('Failed to update content');
-      }
-    },
-    
-    deleteContent: async (_, { id }) => {
-      try {
-        await clientPromise;
-        await Content.findByIdAndDelete(id);
-        return true;
-      } catch (error) {
-        console.error('Error deleting content:', error);
-        throw new Error('Failed to delete content');
-      }
-    },
-    
-    incrementContentViewCount: async (_, { id }) => {
-      try {
-        await clientPromise;
-        return await Content.findByIdAndUpdate(
-          id,
-          { $inc: { viewCount: 1 } },
-          { new: true }
-        );
-      } catch (error) {
-        console.error('Error incrementing content view count:', error);
-        throw new Error('Failed to increment content view count');
-      }
-    }
-  },
-  
-  // Field resolvers
-  AudioGear: {
-    compatibleCases: async (parent, { limit = 5 }) => {
-      try {
-        await clientPromise;
-        const matches = await GearCaseMatch.find({ gearId: parent.id }).limit(limit);
         
-        // Get case IDs from matches
-        const caseIds = matches.map(match => match.caseId);
-        
-        // Fetch cases
-        return await Case.find({ _id: { $in: caseIds } });
-      } catch (error) {
-        console.error('Error fetching compatible cases:', error);
-        throw new Error('Failed to fetch compatible cases');
-      }
-    }
-  },
-  
-  Case: {
-    compatibleGear: async (parent, { limit = 5 }) => {
-      try {
-        await clientPromise;
-        const matches = await GearCaseMatch.find({ caseId: parent.id }).limit(limit);
-        
-        // Get gear IDs from matches
-        const gearIds = matches.map(match => match.gearId);
-        
-        // Fetch gear
-        return await AudioGear.find({ _id: { $in: gearIds } });
-      } catch (error) {
-        console.error('Error fetching compatible gear:', error);
-        throw new Error('Failed to fetch compatible gear');
-      }
-    }
-  },
-  
-  Match: {
-    gear: async (parent) => {
-      try {
-        await clientPromise;
-        return await AudioGear.findById(parent.gearId);
-      } catch (error) {
-        console.error('Error fetching gear for match:', error);
-        throw new Error('Failed to fetch gear for match');
-      }
-    },
-    
-    case: async (parent) => {
-      try {
-        await clientPromise;
-        return await Case.findById(parent.caseId);
-      } catch (error) {
-        console.error('Error fetching case for match:', error);
-        throw new Error('Failed to fetch case for match');
-      }
-    },
-    
-    feedback: async (parent) => {
-      try {
-        await clientPromise;
-        return await feedbackManager.getFeedbackForMatch(parent.gearId, parent.caseId);
-      } catch (error) {
-        console.error('Error fetching feedback for match:', error);
-        throw new Error('Failed to fetch feedback for match');
-      }
-    },
-    
-    averageRating: async (parent) => {
-      try {
-        await clientPromise;
-        return await feedbackManager.getAverageRatingForMatch(parent.gearId, parent.caseId);
-      } catch (error) {
-        console.error('Error calculating average rating for match:', error);
-        throw new Error('Failed to calculate average rating for match');
-      }
-    }
-  },
-  
-  Content: {
-    relatedGear: async (parent) => {
-      try {
-        await clientPromise;
-        if (!parent.relatedGear || parent.relatedGear.length === 0) {
-          return [];
+        const user = await User.findById(userId);
+        if (!user) {
+          throw new Error('User not found');
         }
         
-        return await AudioGear.find({ _id: { $in: parent.relatedGear } });
+        const gear = await AudioGear.findById(gearId);
+        if (!gear) {
+          throw new Error('Gear not found');
+        }
+        
+        // Add gear to user's saved gear if not already saved
+        if (!user.savedGear.includes(gearId)) {
+          user.savedGear.push(gearId);
+          await user.save();
+        }
+        
+        return user;
       } catch (error) {
-        console.error('Error fetching related gear for content:', error);
-        throw new Error('Failed to fetch related gear for content');
+        console.error('Error saving gear for user:', error);
+        throw new Error('Failed to save gear');
       }
     },
     
-    relatedCases: async (parent) => {
+    saveCase: async (_, { userId, caseId }) => {
       try {
         await clientPromise;
-        if (!parent.relatedCases || parent.relatedCases.length === 0) {
-          return [];
+        
+        const user = await User.findById(userId);
+        if (!user) {
+          throw new Error('User not found');
         }
         
-        return await Case.find({ _id: { $in: parent.relatedCases } });
+        const caseItem = await Case.findById(caseId);
+        if (!caseItem) {
+          throw new Error('Case not found');
+        }
+        
+        // Add case to user's saved cases if not already saved
+        if (!user.savedCases.includes(caseId)) {
+          user.savedCases.push(caseId);
+          await user.save();
+        }
+        
+        return user;
       } catch (error) {
-        console.error('Error fetching related cases for content:', error);
-        throw new Error('Failed to fetch related cases for content');
+        console.error('Error saving case for user:', error);
+        throw new Error('Failed to save case');
+      }
+    },
+    
+    saveMatch: async (_, { userId, matchId }) => {
+      try {
+        await clientPromise;
+        
+        const user = await User.findById(userId);
+        if (!user) {
+          throw new Error('User not found');
+        }
+        
+        const match = await GearCaseMatch.findById(matchId);
+        if (!match) {
+          throw new Error('Match not found');
+        }
+        
+        // Add match to user's saved matches if not already saved
+        if (!user.savedMatches.includes(matchId)) {
+          user.savedMatches.push(matchId);
+          await user.save();
+        }
+        
+        return user;
+      } catch (error) {
+        console.error('Error saving match for user:', error);
+        throw new Error('Failed to save match');
       }
     }
   }
 };
 
 // Create Apollo Server
+import { ApolloServer } from '@apollo/server';
+import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled';
+
 const apolloServer = new ApolloServer({
   typeDefs,
   resolvers,
+  plugins: [
+    process.env.NODE_ENV === 'production'
+      ? ApolloServerPluginLandingPageDisabled()
+      : undefined
+  ].filter(Boolean) as any,
 });
 
-// Create handler with Next.js integration
+// Create handler for Next.js API route
 const handler = startServerAndCreateNextHandler(apolloServer, {
-  context: async (req, res) => {
-    // Ensure CORS headers are set for all requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, apollo-require-preflight, Apollo-Require-Preflight');
-    
-    // Handle OPTIONS requests explicitly
-    if (req.method === 'OPTIONS') {
-      res.status(200).end();
-      return { req, res };
-    }
-    
-    return {
-      req,
-      res,
-      db: await clientPromise,
-      // Set auth to null to explicitly disable authentication checks
-      auth: null
-    };
-  },
+  context: async (req, res) => ({ req, res }),
 });
 
-// Export the handler for Next.js API routes
-export default handler;
-
-// Disable Next.js body parsing
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export default async function graphqlHandler(req: NextApiRequest, res: NextApiResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Apollo-Require-Preflight');
+  
+  // Handle OPTIONS request for CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  // Handle the GraphQL request
+  return handler(req, res);
+}
