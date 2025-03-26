@@ -28,6 +28,8 @@ const cors = Cors({
     'Content-Type',
     'Authorization',
     'Accept',
+    'apollo-require-preflight',
+    'Apollo-Require-Preflight'
   ],
   origin: '*',
   credentials: true,
@@ -1190,13 +1192,18 @@ const apolloServer = new ApolloServer({
   }
 })();
 
-// Create handler function with CORS support
-const handler = (req: NextApiRequest, res: NextApiResponse) => {
+// Create handler function with enhanced CORS support
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  // Log request details for debugging
+  console.log(`GraphQL API request: ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  
   // Handle OPTIONS request for CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, apollo-require-preflight, Apollo-Require-Preflight');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.status(200).end();
     return;
@@ -1205,10 +1212,18 @@ const handler = (req: NextApiRequest, res: NextApiResponse) => {
   // Add CORS headers to all responses
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, apollo-require-preflight, Apollo-Require-Preflight');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  // Use micro handler from apollo-server-micro
+  // Special handling for GET requests to support Apollo Client configurations that use GET
+  if (req.method === 'GET') {
+    // For GET requests, we'll still use the Apollo handler but ensure it works properly
+    return apolloServer.createHandler({
+      path: '/api/graphql',
+    })(req, res);
+  }
+
+  // Use micro handler from apollo-server-micro for other methods (primarily POST)
   return apolloServer.createHandler({
     path: '/api/graphql',
   })(req, res);
