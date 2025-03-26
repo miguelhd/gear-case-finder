@@ -12,7 +12,8 @@
     "test:e2e": "cypress run",
     "cypress": "cypress open",
     "db:setup": "node scripts/db-setup/index.js",
-    "db:test-connection": "node scripts/db-setup/test-connection.js"
+    "db:test-connection": "node scripts/db-setup/test-connection.js",
+    "db:import": "node scripts/db-import/index.js"
   },
   "dependencies": {
     "@apollo/client": "^3.8.0",
@@ -22,6 +23,7 @@
     "apollo-server-micro": "^3.12.0",
     "axios": "^1.4.0",
     "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.7",
     "graphql": "^16.7.1",
     "https-proxy-agent": "^7.0.6",
     "micro-cors": "^0.1.1",

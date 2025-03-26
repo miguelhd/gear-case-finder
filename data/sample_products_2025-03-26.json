@@ -1,0 +1,132 @@
+[
+  {
+    "title": "Sample Synthesizer",
+    "description": "A high-quality synthesizer with multiple oscillators and filters",
+    "price": 799.99,
+    "currency": "USD",
+    "url": "https://example.com/synthesizer",
+    "imageUrls": ["https://example.com/images/synth1.jpg", "https://example.com/images/synth2.jpg"],
+    "dimensions": {
+      "length": 32.5,
+      "width": 12.8,
+      "height": 3.5,
+      "unit": "in"
+    },
+    "weight": {
+      "value": 15.2,
+      "unit": "lb"
+    },
+    "marketplace": "amazon",
+    "rating": 4.7,
+    "reviewCount": 128,
+    "availability": "In Stock",
+    "seller": {
+      "name": "Music Store Pro",
+      "url": "https://example.com/seller/musicstore",
+      "rating": 4.9
+    },
+    "category": "Synthesizers",
+    "features": [
+      "49 full-size keys",
+      "16-voice polyphony",
+      "3 oscillators per voice",
+      "Dual filters",
+      "Built-in effects processor"
+    ],
+    "scrapedAt": "2025-03-26T20:07:50.000Z",
+    "normalizedAt": "2025-03-26T20:07:50.000Z",
+    "productType": "synthesizer",
+    "isCase": false,
+    "sourceId": "SYNTH123"
+  },
+  {
+    "title": "Protective Hard Case for Synthesizers",
+    "description": "Waterproof and shockproof hard case designed specifically for synthesizers and keyboards up to 32 inches long",
+    "price": 149.99,
+    "currency": "USD",
+    "url": "https://example.com/synth-case",
+    "imageUrls": ["https://example.com/images/case1.jpg", "https://example.com/images/case2.jpg"],
+    "dimensions": {
+      "length": 34.5,
+      "width": 14.8,
+      "height": 5.5,
+      "unit": "in"
+    },
+    "weight": {
+      "value": 8.2,
+      "unit": "lb"
+    },
+    "marketplace": "amazon",
+    "rating": 4.8,
+    "reviewCount": 86,
+    "availability": "In Stock",
+    "seller": {
+      "name": "Case Pro Shop",
+      "url": "https://example.com/seller/casepro",
+      "rating": 4.7
+    },
+    "category": "Instrument Cases",
+    "features": [
+      "Waterproof IP67 rated",
+      "Shockproof with reinforced corners",
+      "Customizable foam interior",
+      "Pressure equalization valve",
+      "Comfortable carrying handle",
+      "TSA-approved locks"
+    ],
+    "scrapedAt": "2025-03-26T20:08:10.000Z",
+    "normalizedAt": "2025-03-26T20:08:10.000Z",
+    "productType": "case",
+    "isCase": true,
+    "sourceId": "CASE456",
+    "caseCompatibility": {
+      "minLength": 0,
+      "maxLength": 32,
+      "minWidth": 0,
+      "maxWidth": 13,
+      "minHeight": 0,
+      "maxHeight": 4,
+      "dimensionUnit": "in"
+    }
+  },
+  {
+    "title": "Compact Audio Interface",
+    "description": "Professional 2-in/2-out USB audio interface with high-quality preamps",
+    "price": 149.99,
+    "currency": "USD",
+    "url": "https://example.com/audio-interface",
+    "imageUrls": ["https://example.com/images/interface1.jpg"],
+    "dimensions": {
+      "length": 6.5,
+      "width": 4.8,
+      "height": 2.2,
+      "unit": "in"
+    },
+    "weight": {
+      "value": 1.2,
+      "unit": "lb"
+    },
+    "marketplace": "amazon",
+    "rating": 4.6,
+    "reviewCount": 203,
+    "availability": "In Stock",
+    "seller": {
+      "name": "Audio Pro Shop",
+      "url": "https://example.com/seller/audioproshop",
+      "rating": 4.8
+    },
+    "category": "Audio Interfaces",
+    "features": [
+      "24-bit/192kHz resolution",
+      "2 microphone preamps",
+      "Zero-latency monitoring",
+      "USB-C connection",
+      "Includes recording software"
+    ],
+    "scrapedAt": "2025-03-26T20:08:30.000Z",
+    "normalizedAt": "2025-03-26T20:08:30.000Z",
+    "productType": "audio interface",
+    "isCase": false,
+    "sourceId": "INTERFACE789"
+  }
+]

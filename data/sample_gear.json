@@ -1,0 +1,40 @@
+{
+  "title": "Sample Synthesizer",
+  "description": "A high-quality synthesizer with multiple oscillators and filters",
+  "price": 799.99,
+  "currency": "USD",
+  "url": "https://example.com/synthesizer",
+  "imageUrls": ["https://example.com/images/synth1.jpg", "https://example.com/images/synth2.jpg"],
+  "dimensions": {
+    "length": 32.5,
+    "width": 12.8,
+    "height": 3.5,
+    "unit": "in"
+  },
+  "weight": {
+    "value": 15.2,
+    "unit": "lb"
+  },
+  "marketplace": "amazon",
+  "rating": 4.7,
+  "reviewCount": 128,
+  "availability": "In Stock",
+  "seller": {
+    "name": "Music Store Pro",
+    "url": "https://example.com/seller/musicstore",
+    "rating": 4.9
+  },
+  "category": "Synthesizers",
+  "features": [
+    "49 full-size keys",
+    "16-voice polyphony",
+    "3 oscillators per voice",
+    "Dual filters",
+    "Built-in effects processor"
+  ],
+  "scrapedAt": "2025-03-26T20:07:50.000Z",
+  "normalizedAt": "2025-03-26T20:07:50.000Z",
+  "productType": "synthesizer",
+  "isCase": false,
+  "sourceId": "SYNTH123"
+}
