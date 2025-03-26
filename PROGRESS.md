@@ -59,6 +59,17 @@
 - Verified fix with successful local build
 - Ensured compatibility with Vercel deployment environment
 
+#### 9. GraphQL API Error Resolution
+- Fixed 405 Method Not Allowed error in GraphQL API endpoint
+- Identified root cause as mismatch between imports and implementation (using both @apollo/server and apollo-server-micro)
+- Updated GraphQL implementation to consistently use @apollo/server and @as-integrations/next
+- Removed deprecated apollo-server-micro and micro-cors dependencies
+- Updated TypeScript configuration to support ES2017 features
+- Implemented proper Apollo Server initialization with async IIFE pattern
+- Added enhanced logging for better error diagnosis
+- Verified fix with successful local testing
+- Ensured proper handling of all HTTP methods in the GraphQL endpoint
+
 ### Next Steps
 
 #### 1. Database Setup and Integration
@@ -90,3 +101,4 @@
 - Sample data generation functionality has been added for testing purposes
 - Detailed documentation has been created for database setup and import scripts
 - Fixed TypeScript array initialization error in admin/scrapers.tsx that was causing Vercel deployment failure
+- Resolved GraphQL API 405 error by properly implementing @apollo/server with @as-integrations/next
