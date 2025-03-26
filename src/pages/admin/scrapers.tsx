@@ -80,10 +80,10 @@ const ScrapersPage = () => {
     }
   ];
 
-  const [selectedScrapers, setSelectedScrapers] = useState([]);
+  const [selectedScrapers, setSelectedScrapers] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
-  const toggleScraperSelection = (scraperId) => {
+  const toggleScraperSelection = (scraperId: string) => {
     if (selectedScrapers.includes(scraperId)) {
       setSelectedScrapers(selectedScrapers.filter(id => id !== scraperId));
     } else {
