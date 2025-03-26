@@ -18,9 +18,12 @@ const httpLink = new HttpLink({
   credentials: 'same-origin',
   headers: {
     'Content-Type': 'application/json',
+    'apollo-require-preflight': 'true',
+    'Apollo-Require-Preflight': 'true'
   },
   fetchOptions: {
     mode: 'cors',
+    method: 'POST'
   },
 });
 
