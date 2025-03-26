@@ -5,7 +5,7 @@ import Head from 'next/head';
 
 // GraphQL query for fetching gear items with pagination and filtering
 const GET_GEAR_ITEMS = gql`
-  query GetGearItems($filter: GearFilterInput, $page: Int, $limit: Int) {
+  query GetGearItems($filter: GearFilterInput!, $page: Int, $limit: Int) {
     filterGear(filter: $filter, pagination: { page: $page, limit: $limit }) {
       items {
         id
@@ -55,9 +55,7 @@ const GearListingPage: React.FC = () => {
     variables: {
       filter: {
         categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-        brands: selectedBrands.length > 0 ? selectedBrands : undefined,
-        sortBy,
-        sortDirection
+        brands: selectedBrands.length > 0 ? selectedBrands : undefined
       },
       page,
       limit

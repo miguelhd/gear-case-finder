@@ -5,7 +5,7 @@ import Head from 'next/head';
 
 // GraphQL query for fetching cases with pagination and filtering
 const GET_CASES = gql`
-  query GetCases($filter: CaseFilterInput, $page: Int, $limit: Int) {
+  query GetCases($filter: CaseFilterInput!, $page: Int, $limit: Int) {
     filterCases(filter: $filter, pagination: { page: $page, limit: $limit }) {
       items {
         id
@@ -84,9 +84,7 @@ const CasesPage: React.FC = () => {
         maxPrice: maxPrice < 1000 ? maxPrice : undefined,
         waterproof,
         shockproof,
-        dustproof,
-        sortBy,
-        sortDirection
+        dustproof
       },
       page,
       limit

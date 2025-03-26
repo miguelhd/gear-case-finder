@@ -32,7 +32,12 @@ const UserFeedbackSchema = new mongoose.Schema({
 UserFeedbackSchema.index({ gearId: 1, caseId: 1 });
 
 // Create the model
-export const UserFeedbackModel = mongoose.model<UserFeedback & mongoose.Document>('UserFeedback', UserFeedbackSchema);
+let UserFeedbackModel;
+try {
+  UserFeedbackModel = mongoose.model<UserFeedback & mongoose.Document>('UserFeedback');
+} catch (error) {
+  UserFeedbackModel = mongoose.model<UserFeedback & mongoose.Document>('UserFeedback', UserFeedbackSchema);
+}
 
 export class FeedbackManager {
   /**

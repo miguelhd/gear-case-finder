@@ -279,6 +279,26 @@ const typeDefs = gql`
     actuallyPurchased: Boolean
   }
 
+  # Category result type
+  type CategoryResult {
+    items: [CategoryItem]!
+  }
+
+  # Category item type
+  type CategoryItem {
+    category: String
+  }
+
+  # Brand result type
+  type BrandResult {
+    items: [BrandItem]!
+  }
+
+  # Brand item type
+  type BrandItem {
+    brand: String
+  }
+
   # Query type
   type Query {
     # Gear queries
@@ -286,6 +306,8 @@ const typeDefs = gql`
     allGear(pagination: PaginationInput): GearSearchResult
     searchGear(query: String!, pagination: PaginationInput): GearSearchResult
     filterGear(filter: GearFilterInput!, pagination: PaginationInput): GearSearchResult
+    gearCategories: CategoryResult
+    gearBrands: BrandResult
     
     # Case queries
     case(id: ID!): Case
@@ -450,27 +472,72 @@ const resolvers = {
       }
     },
     
+    // Gear categories query
+    gearCategories: async () => {
+      try {
+        await clientPromise;
+        const categories = await AudioGear.distinct('category');
+        return { items: categories.filter(Boolean).map(category => ({ category })) };
+      } catch (error) {
+        console.error('Error fetching gear categories:', error);
+        return { items: [] }; // Return empty array instead of throwing error
+      }
+    },
+    
+    // Gear brands query
+    gearBrands: async () => {
+      try {
+        await clientPromise;
+        const brands = await AudioGear.distinct('brand');
+        return { items: brands.filter(Boolean).map(brand => ({ brand })) };
+      } catch (error) {
+        console.error('Error fetching gear brands:', error);
+        return { items: [] }; // Return empty array instead of throwing error
+      }
+    },
+    
     allGear: async (_, { pagination = { page: 1, limit: 10 } }) => {
       try {
         await clientPromise;
         const { page, limit } = pagination;
         const skip = (page - 1) * limit;
         
-        const items = await AudioGear.find().skip(skip).limit(limit);
-        const total = await AudioGear.countDocuments();
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
+        try {
+          const items = await AudioGear.find().skip(skip).limit(limit);
+          const total = await AudioGear.countDocuments();
+          
+          return {
+            items,
+            pagination: {
+              total,
+              page,
+              limit,
+              pages: Math.ceil(total / limit)
+            }
+          };
+        } catch (dbError) {
+          console.error('Database error in allGear:', dbError);
+          return {
+            items: [],
+            pagination: {
+              total: 0,
+              page,
+              limit,
+              pages: 0
+            }
+          };
+        }
       } catch (error) {
         console.error('Error fetching all gear:', error);
-        throw new Error('Failed to fetch gear');
+        return {
+          items: [],
+          pagination: {
+            total: 0,
+            page: pagination.page,
+            limit: pagination.limit,
+            pages: 0
+          }
+        };
       }
     },
     
@@ -538,21 +605,42 @@ const resolvers = {
           sort.name = 1;
         }
         
-        const items = await AudioGear.find(query).sort(sort).skip(skip).limit(limit);
-        const total = await AudioGear.countDocuments(query);
-        
-        return {
-          items,
-          pagination: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit)
-          }
-        };
+        try {
+          const items = await AudioGear.find(query).sort(sort).skip(skip).limit(limit);
+          const total = await AudioGear.countDocuments(query);
+          
+          return {
+            items,
+            pagination: {
+              total,
+              page,
+              limit,
+              pages: Math.ceil(total / limit)
+            }
+          };
+        } catch (dbError) {
+          console.error('Database error in filterGear:', dbError);
+          return {
+            items: [],
+            pagination: {
+              total: 0,
+              page,
+              limit,
+              pages: 0
+            }
+          };
+        }
       } catch (error) {
         console.error('Error filtering gear:', error);
-        throw new Error('Failed to filter gear');
+        return {
+          items: [],
+          pagination: {
+            total: 0,
+            page: pagination.page,
+            limit: pagination.limit,
+            pages: 0
+          }
+        };
       }
     },
     
