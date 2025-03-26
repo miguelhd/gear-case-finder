@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { Card, Spinner, Pagination, Select, RangeSlider, Checkbox, Button } from '../../components/ui';
-import Layout from '../../components/Layout';
+import Head from 'next/head';
 
 // GraphQL query for fetching cases with pagination and filtering
 const GET_CASES = gql`
@@ -160,7 +160,10 @@ const CasesPage: React.FC = () => {
   };
 
   return (
-    <Layout title="Protective Cases - Find the Perfect Case for Your Music Gear">
+    <>
+      <Head>
+        <title>Protective Cases - Find the Perfect Case for Your Music Gear</title>
+      </Head>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Protective Cases</h1>
         <div className="flex flex-col md:flex-row gap-6">
@@ -304,32 +307,35 @@ const CasesPage: React.FC = () => {
               {/* Sort options */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sort By</h3>
-                <Select
-                  id="sort-by"
-                  value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: 'rating', label: 'Rating' },
-                    { value: 'price', label: 'Price' },
-                    { value: 'reviewCount', label: 'Review Count' }
-                  ]}
-                  className="mb-2"
-                />
-                <Select
-                  id="sort-direction"
-                  value={sortDirection}
-                  onChange={(e) => {
-                    setSortDirection(e.target.value);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: 'desc', label: 'Descending' },
-                    { value: 'asc', label: 'Ascending' }
-                  ]}
-                />
+                <div className="flex items-center space-x-2">
+                  <Select
+                    id="sort-by"
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setPage(1);
+                    }}
+                    options={[
+                      { value: 'rating', label: 'Rating' },
+                      { value: 'price', label: 'Price' },
+                      { value: 'reviewCount', label: 'Review Count' }
+                    ]}
+                    className="flex-grow"
+                  />
+                  <Select
+                    id="sort-direction"
+                    value={sortDirection}
+                    onChange={(e) => {
+                      setSortDirection(e.target.value);
+                      setPage(1);
+                    }}
+                    options={[
+                      { value: 'desc', label: 'Descending' },
+                      { value: 'asc', label: 'Ascending' }
+                    ]}
+                    className="flex-grow"
+                  />
+                </div>
               </div>
               
               {/* Clear filters button */}
@@ -383,34 +389,39 @@ const CasesPage: React.FC = () => {
                     {data.paginatedCases.items.map((caseItem: any) => (
                       <Card
                         key={caseItem.id}
-                        link={`/cases/${caseItem.id}`}
                         title={caseItem.name}
-                        image={caseItem.imageUrls?.[0]}
+                        image={caseItem.imageUrls?.[0] || '/images/placeholder-case.jpg'}
+                        description={`${caseItem.brand || 'Unbranded'} • ${caseItem.type} • ${formatPrice(caseItem.price, caseItem.currency)}`}
+                        link={`/cases/${caseItem.id}`}
                         badges={[
-                          caseItem.type,
-                          caseItem.marketplace,
-                          ...(caseItem.protectionLevel ? [`${caseItem.protectionLevel.charAt(0).toUpperCase() + caseItem.protectionLevel.slice(1)} Protection`] : [])
-                        ]}
-                        description={`${caseItem.rating ? `★ ${caseItem.rating.toFixed(1)}` : 'Not rated'} · ${formatPrice(caseItem.price, caseItem.currency)}`}
+                          caseItem.protectionLevel && `Protection: ${caseItem.protectionLevel.charAt(0).toUpperCase() + caseItem.protectionLevel.slice(1)}`,
+                          caseItem.waterproof && 'Waterproof',
+                          caseItem.shockproof && 'Shockproof',
+                          caseItem.hasHandle && 'Has Handle',
+                          caseItem.hasWheels && 'Has Wheels',
+                          caseItem.rating && `Rating: ${caseItem.rating}/5`
+                        ].filter(Boolean)}
                       />
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-gray-50 dark:bg-gray-700 p-8 rounded-lg text-center">
-                    <p className="text-gray-600 dark:text-gray-300">No cases found matching your criteria.</p>
-                    <Button onClick={clearFilters} variant="primary" className="mt-4">
-                      Clear Filters
-                    </Button>
+                  <div className="bg-gray-50 dark:bg-gray-800 p-8 rounded-lg text-center">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No cases found</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Try adjusting your filters or search criteria.</p>
+                    <Button onClick={clearFilters} variant="primary">Clear Filters</Button>
                   </div>
                 )}
                 
                 {/* Pagination */}
-                {data?.paginatedCases?.pagination && data.paginatedCases.pagination.pages > 1 && (
-                  <div className="mt-8 flex justify-center">
+                {data?.paginatedCases?.pagination?.pages && data.paginatedCases.pagination.pages > 1 && (
+                  <div className="mt-8">
                     <Pagination
                       currentPage={page}
                       totalPages={data.paginatedCases.pagination.pages}
-                      onPageChange={setPage}
+                      onPageChange={(newPage) => {
+                        setPage(newPage);
+                        window.scrollTo(0, 0);
+                      }}
                     />
                   </div>
                 )}
@@ -419,7 +430,7 @@ const CasesPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

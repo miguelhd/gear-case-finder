@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { Card, Spinner, Pagination, Select, RangeSlider, Checkbox, Button } from '../../components/ui';
-import Layout from '../../components/Layout';
+import Head from 'next/head';
 
 // GraphQL query for fetching gear items with pagination and filtering
 const GET_GEAR_ITEMS = gql`
@@ -104,7 +104,10 @@ const GearListingPage: React.FC = () => {
   };
 
   return (
-    <Layout title="Music Gear - Find the Perfect Case for Your Equipment">
+    <>
+      <Head>
+        <title>Music Gear - Find the Perfect Case for Your Equipment</title>
+      </Head>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Music Gear</h1>
         
@@ -276,7 +279,7 @@ const GearListingPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 
