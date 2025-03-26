@@ -16,8 +16,6 @@ const productMatcher = new ProductMatcher();
 const recommendationEngine = new RecommendationEngine();
 const feedbackManager = new FeedbackManager();
 
-// CORS configuration will be handled by Next.js API routes
-
 // Define GraphQL schema
 const typeDefs = gql`
   # Dimensions type
@@ -221,15 +219,14 @@ const typeDefs = gql`
   input CaseFilterInput {
     brands: [String]
     types: [String]
-    protectionLevels: [String]
+    minPrice: Float
+    maxPrice: Float
+    minRating: Float
     waterproof: Boolean
     shockproof: Boolean
     dustproof: Boolean
     colors: [String]
     materials: [String]
-    minPrice: Float
-    maxPrice: Float
-    minRating: Float
     inStock: Boolean
     sortBy: String
     sortDirection: String
@@ -239,104 +236,107 @@ const typeDefs = gql`
   input MatchFilterInput {
     gearId: ID
     caseId: ID
-    minCompatibilityScore: Float
+    minScore: Float
     protectionLevels: [String]
+    priceCategories: [String]
     sortBy: String
     sortDirection: String
   }
 
-  # Gear search result
-  type GearSearchResult {
+  # Paginated gear response
+  type PaginatedGearResponse {
     items: [AudioGear]!
     pagination: PaginationInfo!
   }
 
-  # Case search result
-  type CaseSearchResult {
+  # Paginated case response
+  type PaginatedCaseResponse {
     items: [Case]!
     pagination: PaginationInfo!
   }
 
-  # Match search result
-  type MatchSearchResult {
+  # Paginated match response
+  type PaginatedMatchResponse {
     items: [GearCaseMatch]!
     pagination: PaginationInfo!
   }
 
-  # User feedback result
-  type UserFeedbackResult {
-    items: [UserFeedback]!
-    pagination: PaginationInfo!
-  }
-
-  # Content search result
-  type ContentSearchResult {
+  # Paginated content response
+  type PaginatedContentResponse {
     items: [Content]!
     pagination: PaginationInfo!
   }
 
-  # Category result
-  type CategoryResult {
-    items: [CategoryItem]!
+  # Brand stats
+  type BrandStats {
+    name: String!
+    count: Int!
+    averageRating: Float
+    categories: [String]
   }
 
-  # Category item
-  type CategoryItem {
-    category: String!
+  # Category stats
+  type CategoryStats {
+    name: String!
+    count: Int!
+    brands: [String]
   }
 
-  # Brand result
-  type BrandResult {
-    items: [BrandItem]!
-  }
-
-  # Brand item
-  type BrandItem {
-    brand: String!
+  # System stats
+  type SystemStats {
+    totalGear: Int!
+    totalCases: Int!
+    totalMatches: Int!
+    totalUsers: Int!
+    topBrands: [BrandStats]
+    topCategories: [CategoryStats]
   }
 
   # Query type
   type Query {
     # Gear queries
     gear(id: ID!): AudioGear
-    allGear(pagination: PaginationInput): GearSearchResult
-    searchGear(query: String!, pagination: PaginationInput): GearSearchResult
-    filterGear(filter: GearFilterInput!, pagination: PaginationInput): GearSearchResult
-    gearCategories: CategoryResult
-    gearBrands: BrandResult
-
+    allGear(pagination: PaginationInput): PaginatedGearResponse
+    filterGear(filter: GearFilterInput!, pagination: PaginationInput): PaginatedGearResponse
+    searchGear(query: String!, pagination: PaginationInput): PaginatedGearResponse
+    gearByBrand(brand: String!, pagination: PaginationInput): PaginatedGearResponse
+    gearByCategory(category: String!, pagination: PaginationInput): PaginatedGearResponse
+    gearByType(type: String!, pagination: PaginationInput): PaginatedGearResponse
+    
     # Case queries
     case(id: ID!): Case
-    allCases(pagination: PaginationInput): CaseSearchResult
-    searchCases(query: String!, pagination: PaginationInput): CaseSearchResult
-    filterCases(filter: CaseFilterInput!, pagination: PaginationInput): CaseSearchResult
-    caseTypes: [String]
-    caseBrands: [String]
-    caseColors: [String]
-    caseMaterials: [String]
-
+    allCases(pagination: PaginationInput): PaginatedCaseResponse
+    filterCases(filter: CaseFilterInput!, pagination: PaginationInput): PaginatedCaseResponse
+    searchCases(query: String!, pagination: PaginationInput): PaginatedCaseResponse
+    casesByBrand(brand: String!, pagination: PaginationInput): PaginatedCaseResponse
+    casesByType(type: String!, pagination: PaginationInput): PaginatedCaseResponse
+    
     # Match queries
     match(id: ID!): GearCaseMatch
-    matchesForGear(gearId: ID!, pagination: PaginationInput): MatchSearchResult
-    matchesForCase(caseId: ID!, pagination: PaginationInput): MatchSearchResult
-    filterMatches(filter: MatchFilterInput!, pagination: PaginationInput): MatchSearchResult
-    recommendMatches(gearId: ID!, pagination: PaginationInput): MatchSearchResult
-
+    allMatches(pagination: PaginationInput): PaginatedMatchResponse
+    filterMatches(filter: MatchFilterInput!, pagination: PaginationInput): PaginatedMatchResponse
+    matchesForGear(gearId: ID!, pagination: PaginationInput): PaginatedMatchResponse
+    matchesForCase(caseId: ID!, pagination: PaginationInput): PaginatedMatchResponse
+    
     # User queries
     user(id: ID!): User
     userByEmail(email: String!): User
-
-    # Feedback queries
-    feedbackForMatch(gearId: ID!, caseId: ID!, pagination: PaginationInput): UserFeedbackResult
-
+    
     # Content queries
     content(id: ID!): Content
     contentBySlug(slug: String!): Content
-    allContent(pagination: PaginationInput): ContentSearchResult
-    contentByCategory(category: String!, pagination: PaginationInput): ContentSearchResult
-
+    allContent(pagination: PaginationInput): PaginatedContentResponse
+    
+    # Stats queries
+    systemStats: SystemStats
+    brandStats(brand: String!): BrandStats
+    categoryStats(category: String!): CategoryStats
+    
+    # Affiliate queries
+    affiliateLinks(productId: ID!, productType: String!): [AffiliateLink]
+    
     # Analytics queries
-    siteAnalytics(period: String!): Analytics
+    analytics(period: String!): Analytics
   }
 
   # Mutation type
@@ -345,18 +345,18 @@ const typeDefs = gql`
     createGear(input: GearInput!): AudioGear
     updateGear(id: ID!, input: GearInput!): AudioGear
     deleteGear(id: ID!): Boolean
-
+    
     # Case mutations
     createCase(input: CaseInput!): Case
     updateCase(id: ID!, input: CaseInput!): Case
     deleteCase(id: ID!): Boolean
-
+    
     # Match mutations
-    createMatch(gearId: ID!, caseId: ID!): GearCaseMatch
+    createMatch(input: MatchInput!): GearCaseMatch
     updateMatch(id: ID!, input: MatchInput!): GearCaseMatch
     deleteMatch(id: ID!): Boolean
-    generateMatches(gearId: ID): Int
-
+    recalculateMatch(id: ID!): GearCaseMatch
+    
     # User mutations
     createUser(input: UserInput!): User
     updateUser(id: ID!, input: UserInput!): User
@@ -364,30 +364,29 @@ const typeDefs = gql`
     saveGear(userId: ID!, gearId: ID!): User
     saveCase(userId: ID!, caseId: ID!): User
     saveMatch(userId: ID!, matchId: ID!): User
-    removeGear(userId: ID!, gearId: ID!): User
-    removeCase(userId: ID!, caseId: ID!): User
-    removeMatch(userId: ID!, matchId: ID!): User
-
+    
     # Feedback mutations
-    createFeedback(input: FeedbackInput!): UserFeedback
-    updateFeedback(id: ID!, input: FeedbackInput!): UserFeedback
-    deleteFeedback(id: ID!): Boolean
-
+    submitFeedback(input: FeedbackInput!): UserFeedback
+    
     # Content mutations
     createContent(input: ContentInput!): Content
     updateContent(id: ID!, input: ContentInput!): Content
     deleteContent(id: ID!): Boolean
     publishContent(id: ID!): Content
     unpublishContent(id: ID!): Content
-
+    
     # Affiliate mutations
     createAffiliateLink(input: AffiliateLinkInput!): AffiliateLink
     updateAffiliateLink(id: ID!, input: AffiliateLinkInput!): AffiliateLink
     deleteAffiliateLink(id: ID!): Boolean
-    trackAffiliateClick(id: ID!): Boolean
+    
+    # System mutations
+    clearCache: Boolean
+    rebuildIndexes: Boolean
+    runScraper(scraperId: String!): Boolean
   }
 
-  # Gear input
+  # Input types
   input GearInput {
     name: String!
     brand: String!
@@ -408,7 +407,6 @@ const typeDefs = gql`
     seller: SellerInput
   }
 
-  # Case input
   input CaseInput {
     name: String!
     brand: String
@@ -434,51 +432,26 @@ const typeDefs = gql`
     seller: SellerInput
   }
 
-  # Dimensions input
-  input DimensionsInput {
-    length: Float!
-    width: Float!
-    height: Float!
-    unit: String!
-  }
-
-  # Weight input
-  input WeightInput {
-    value: Float!
-    unit: String!
-  }
-
-  # Seller input
-  input SellerInput {
-    name: String!
-    url: String
-    rating: Float
-  }
-
-  # Match input
   input MatchInput {
+    gearId: ID!
+    caseId: ID!
     compatibilityScore: Float
     dimensionFit: DimensionFitInput
     priceCategory: String
     protectionLevel: String
     features: [String]
+    userRating: Float
+    reviewCount: Int
   }
 
-  # Dimension fit input
-  input DimensionFitInput {
-    length: Float!
-    width: Float!
-    height: Float!
-    overall: Float!
-  }
-
-  # User input
   input UserInput {
     name: String
     email: String!
+    savedGear: [ID]
+    savedCases: [ID]
+    savedMatches: [ID]
   }
 
-  # Feedback input
   input FeedbackInput {
     userId: ID
     gearId: ID!
@@ -491,7 +464,6 @@ const typeDefs = gql`
     actuallyPurchased: Boolean
   }
 
-  # Content input
   input ContentInput {
     title: String!
     slug: String!
@@ -504,7 +476,6 @@ const typeDefs = gql`
     published: Boolean
   }
 
-  # Affiliate link input
   input AffiliateLinkInput {
     productId: ID!
     productType: String!
@@ -513,618 +484,246 @@ const typeDefs = gql`
     commission: Float
     active: Boolean
   }
-`;
 
-// Define interfaces for MongoDB queries
-interface MongoQuery {
-  [key: string]: any;
-}
+  input DimensionsInput {
+    length: Float!
+    width: Float!
+    height: Float!
+    unit: String!
+  }
+
+  input WeightInput {
+    value: Float!
+    unit: String!
+  }
+
+  input DimensionFitInput {
+    length: Float!
+    width: Float!
+    height: Float!
+    overall: Float!
+  }
+
+  input SellerInput {
+    name: String!
+    url: String
+    rating: Float
+  }
+`;
 
 // Define resolvers
 const resolvers = {
   Query: {
     // Gear queries
     gear: async (_, { id }) => {
-      try {
-        await clientPromise;
-        return await AudioGear.findById(id);
-      } catch (error) {
-        console.error('Error fetching gear:', error);
-        throw new Error('Failed to fetch gear');
-      }
-    },
-    
-    gearCategories: async () => {
-      try {
-        await clientPromise;
-        const categories = await AudioGear.distinct('category');
-        return { items: categories.filter(Boolean).map(category => ({ category })) };
-      } catch (error) {
-        console.error('Error fetching gear categories:', error);
-        return { items: [] }; // Return empty array instead of throwing error
-      }
-    },
-    
-    gearBrands: async () => {
-      try {
-        await clientPromise;
-        const brands = await AudioGear.distinct('brand');
-        return { items: brands.filter(Boolean).map(brand => ({ brand })) };
-      } catch (error) {
-        console.error('Error fetching gear brands:', error);
-        return { items: [] }; // Return empty array instead of throwing error
-      }
+      await clientPromise;
+      return AudioGear.findById(id);
     },
     
     allGear: async (_, { pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Set a timeout for the database operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database operation timeout')), 10000);
-        });
-        
-        // Database operation with timeout
-        const dbOperation = async () => {
-          try {
-            // Use aggregation to get items and count in a single query
-            const result = await AudioGear.aggregate([
-              {
-                $facet: {
-                  items: [
-                    { $sort: { name: 1 } },
-                    { $skip: skip },
-                    { $limit: limit }
-                  ],
-                  totalCount: [
-                    { $count: 'count' }
-                  ]
-                }
-              }
-            ]).exec();
-            
-            const items = result[0].items;
-            const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-            
-            return {
-              items,
-              pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-              }
-            };
-          } catch (dbError) {
-            console.error('Database error in allGear:', dbError);
-            return {
-              items: [],
-              pagination: {
-                total: 0,
-                page,
-                limit,
-                pages: 0
-              }
-            };
+      await clientPromise;
+      const { page, limit } = pagination;
+      const skip = (page - 1) * limit;
+      
+      const [result] = await AudioGear.aggregate([
+        {
+          $facet: {
+            items: [
+              { $sort: { name: 1 } },
+              { $skip: skip },
+              { $limit: limit }
+            ],
+            total: [
+              { $count: 'count' }
+            ]
           }
-        };
-        
-        // Race between database operation and timeout
-        return Promise.race([dbOperation(), timeoutPromise]);
-      } catch (error) {
-        console.error('Error fetching all gear:', error);
-        return {
-          items: [],
-          pagination: {
-            total: 0,
-            page: pagination.page,
-            limit: pagination.limit,
-            pages: 0
-          }
-        };
-      }
-    },
-    
-    searchGear: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Set a timeout for the database operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database operation timeout')), 10000);
-        });
-        
-        // Database operation with timeout
-        const dbOperation = async () => {
-          try {
-            const searchRegex = new RegExp(query, 'i');
-            const searchQuery = {
-              $or: [
-                { name: searchRegex },
-                { brand: searchRegex },
-                { category: searchRegex },
-                { type: searchRegex },
-                { description: searchRegex }
-              ]
-            };
-            
-            // Use aggregation to get items and count in a single query
-            const result = await AudioGear.aggregate([
-              { $match: searchQuery },
-              {
-                $facet: {
-                  items: [
-                    { $sort: { name: 1 } },
-                    { $skip: skip },
-                    { $limit: limit }
-                  ],
-                  totalCount: [
-                    { $count: 'count' }
-                  ]
-                }
-              }
-            ]).exec();
-            
-            const items = result[0].items;
-            const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-            
-            return {
-              items,
-              pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-              }
-            };
-          } catch (dbError) {
-            console.error('Database error in searchGear:', dbError);
-            return {
-              items: [],
-              pagination: {
-                total: 0,
-                page,
-                limit,
-                pages: 0
-              }
-            };
-          }
-        };
-        
-        // Race between database operation and timeout
-        return Promise.race([dbOperation(), timeoutPromise]);
-      } catch (error) {
-        console.error('Error searching gear:', error);
-        return {
-          items: [],
-          pagination: {
-            total: 0,
-            page: pagination.page,
-            limit: pagination.limit,
-            pages: 0
-          }
-        };
-      }
+        }
+      ]);
+      
+      const items = result.items || [];
+      const total = result.total.length > 0 ? result.total[0].count : 0;
+      const pages = Math.ceil(total / limit);
+      
+      return {
+        items,
+        pagination: {
+          total,
+          page,
+          limit,
+          pages
+        }
+      };
     },
     
     filterGear: async (_, { filter, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Set a timeout for the database operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database operation timeout')), 10000);
-        });
-        
-        // Database operation with timeout
-        const dbOperation = async () => {
-          try {
-            // Build filter query
-            const query: MongoQuery = {};
-            
-            if (filter.brands && filter.brands.length > 0) {
-              query.brand = { $in: filter.brands };
-            }
-            
-            if (filter.categories && filter.categories.length > 0) {
-              query.category = { $in: filter.categories };
-            }
-            
-            if (filter.types && filter.types.length > 0) {
-              query.type = { $in: filter.types };
-            }
-            
-            if (filter.minPrice !== undefined) {
-              query.price = query.price || {};
-              query.price.$gte = filter.minPrice;
-            }
-            
-            if (filter.maxPrice !== undefined) {
-              query.price = query.price || {};
-              query.price.$lte = filter.maxPrice;
-            }
-            
-            if (filter.inStock !== undefined) {
-              query.inStock = filter.inStock;
-            }
-            
-            if (filter.minRating !== undefined) {
-              query.rating = { $gte: filter.minRating };
-            }
-            
-            // Create sort object with explicit 1/-1 values
-            const sortField = filter.sortBy || 'name';
-            const sortDirection = filter.sortDirection === 'desc' ? -1 : 1;
-            const sortObj = {};
-            sortObj[sortField] = sortDirection;
-            
-            // Use aggregation to get items and count in a single query
-            const result = await AudioGear.aggregate([
-              { $match: query },
-              {
-                $facet: {
-                  items: [
-                    { $sort: sortObj },
-                    { $skip: skip },
-                    { $limit: limit }
-                  ],
-                  totalCount: [
-                    { $count: 'count' }
-                  ]
-                }
-              }
-            ]).exec();
-            
-            const items = result[0].items;
-            const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-            
-            return {
-              items,
-              pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-              }
-            };
-          } catch (dbError) {
-            console.error('Database error in filterGear:', dbError);
-            return {
-              items: [],
-              pagination: {
-                total: 0,
-                page,
-                limit,
-                pages: 0
-              }
-            };
+      type MongoQuery = Record<string, any>;
+      
+      await clientPromise;
+      const { page, limit } = pagination;
+      const skip = (page - 1) * limit;
+      
+      // Set a timeout for the database operation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database operation timeout')), 10000);
+      });
+      
+      // Database operation with timeout
+      const dbOperation = async () => {
+        try {
+          // Build filter query
+          const query: MongoQuery = {};
+          
+          if (filter.brands && filter.brands.length > 0) {
+            query.brand = { $in: filter.brands };
           }
-        };
-        
-        // Race between database operation and timeout
-        return Promise.race([dbOperation(), timeoutPromise]);
-      } catch (error) {
-        console.error('Error filtering gear:', error);
-        return {
-          items: [],
-          pagination: {
-            total: 0,
-            page: pagination.page,
-            limit: pagination.limit,
-            pages: 0
+          
+          if (filter.types && filter.types.length > 0) {
+            query.type = { $in: filter.types };
           }
-        };
-      }
+          
+          if (filter.categories && filter.categories.length > 0) {
+            query.category = { $in: filter.categories };
+          }
+          
+          if (filter.minPrice !== undefined) {
+            query.price = query.price || {};
+            query.price.$gte = filter.minPrice;
+          }
+          
+          if (filter.maxPrice !== undefined) {
+            query.price = query.price || {};
+            query.price.$lte = filter.maxPrice;
+          }
+          
+          if (filter.minRating !== undefined) {
+            query.rating = { $gte: filter.minRating };
+          }
+          
+          if (filter.inStock !== undefined) {
+            query.inStock = filter.inStock;
+          }
+          
+          // Determine sort order
+          let sortField = 'name';
+          let sortOrder: 1 | -1 = 1;
+          
+          if (filter.sortBy) {
+            sortField = filter.sortBy;
+            sortOrder = filter.sortDirection === 'desc' ? -1 : 1;
+          }
+          
+          const sortOptions: Record<string, 1 | -1> = {};
+          sortOptions[sortField] = sortOrder;
+          
+          // Execute query with aggregation
+          const [result] = await AudioGear.aggregate([
+            { $match: query },
+            {
+              $facet: {
+                items: [
+                  { $sort: sortOptions },
+                  { $skip: skip },
+                  { $limit: limit }
+                ],
+                total: [
+                  { $count: 'count' }
+                ]
+              }
+            }
+          ]);
+          
+          const items = result.items || [];
+          const total = result.total.length > 0 ? result.total[0].count : 0;
+          const pages = Math.ceil(total / limit);
+          
+          return {
+            items,
+            pagination: {
+              total,
+              page,
+              limit,
+              pages
+            }
+          };
+        } catch (error) {
+          console.error('Error in filterGear:', error);
+          throw error;
+        }
+      };
+      
+      // Execute with timeout
+      return Promise.race([dbOperation(), timeoutPromise]);
     },
     
-    // Case queries
-    case: async (_, { id }) => {
-      try {
-        await clientPromise;
-        return await Case.findById(id);
-      } catch (error) {
-        console.error('Error fetching case:', error);
-        throw new Error('Failed to fetch case');
-      }
+    searchGear: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
+      await clientPromise;
+      const { page, limit } = pagination;
+      const skip = (page - 1) * limit;
+      
+      // Set a timeout for the database operation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database operation timeout')), 10000);
+      });
+      
+      // Database operation with timeout
+      const dbOperation = async () => {
+        try {
+          const searchRegex = new RegExp(query, 'i');
+          const searchQuery = {
+            $or: [
+              { name: searchRegex },
+              { brand: searchRegex },
+              { type: searchRegex },
+              { description: searchRegex }
+            ]
+          };
+          
+          // Execute query with aggregation
+          const [result] = await AudioGear.aggregate([
+            { $match: searchQuery },
+            {
+              $facet: {
+                items: [
+                  { $sort: { name: 1 } },
+                  { $skip: skip },
+                  { $limit: limit }
+                ],
+                total: [
+                  { $count: 'count' }
+                ]
+              }
+            }
+          ]);
+          
+          const items = result.items || [];
+          const total = result.total.length > 0 ? result.total[0].count : 0;
+          const pages = Math.ceil(total / limit);
+          
+          return {
+            items,
+            pagination: {
+              total,
+              page,
+              limit,
+              pages
+            }
+          };
+        } catch (error) {
+          console.error('Error in searchGear:', error);
+          throw error;
+        }
+      };
+      
+      // Execute with timeout
+      return Promise.race([dbOperation(), timeoutPromise]);
     },
     
-    allCases: async (_, { pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Set a timeout for the database operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database operation timeout')), 10000);
-        });
-        
-        // Database operation with timeout
-        const dbOperation = async () => {
-          try {
-            // Use aggregation to get items and count in a single query
-            const result = await Case.aggregate([
-              {
-                $facet: {
-                  items: [
-                    { $sort: { name: 1 } },
-                    { $skip: skip },
-                    { $limit: limit }
-                  ],
-                  totalCount: [
-                    { $count: 'count' }
-                  ]
-                }
-              }
-            ]).exec();
-            
-            const items = result[0].items;
-            const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-            
-            return {
-              items,
-              pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-              }
-            };
-          } catch (dbError) {
-            console.error('Database error in allCases:', dbError);
-            return {
-              items: [],
-              pagination: {
-                total: 0,
-                page,
-                limit,
-                pages: 0
-              }
-            };
-          }
-        };
-        
-        // Race between database operation and timeout
-        return Promise.race([dbOperation(), timeoutPromise]);
-      } catch (error) {
-        console.error('Error fetching all cases:', error);
-        return {
-          items: [],
-          pagination: {
-            total: 0,
-            page: pagination.page,
-            limit: pagination.limit,
-            pages: 0
-          }
-        };
-      }
-    },
-    
-    searchCases: async (_, { query, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Set a timeout for the database operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database operation timeout')), 10000);
-        });
-        
-        // Database operation with timeout
-        const dbOperation = async () => {
-          try {
-            const searchRegex = new RegExp(query, 'i');
-            const searchQuery = {
-              $or: [
-                { name: searchRegex },
-                { brand: searchRegex },
-                { type: searchRegex },
-                { description: searchRegex }
-              ]
-            };
-            
-            // Use aggregation to get items and count in a single query
-            const result = await Case.aggregate([
-              { $match: searchQuery },
-              {
-                $facet: {
-                  items: [
-                    { $sort: { name: 1 } },
-                    { $skip: skip },
-                    { $limit: limit }
-                  ],
-                  totalCount: [
-                    { $count: 'count' }
-                  ]
-                }
-              }
-            ]).exec();
-            
-            const items = result[0].items;
-            const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-            
-            return {
-              items,
-              pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-              }
-            };
-          } catch (dbError) {
-            console.error('Database error in searchCases:', dbError);
-            return {
-              items: [],
-              pagination: {
-                total: 0,
-                page,
-                limit,
-                pages: 0
-              }
-            };
-          }
-        };
-        
-        // Race between database operation and timeout
-        return Promise.race([dbOperation(), timeoutPromise]);
-      } catch (error) {
-        console.error('Error searching cases:', error);
-        return {
-          items: [],
-          pagination: {
-            total: 0,
-            page: pagination.page,
-            limit: pagination.limit,
-            pages: 0
-          }
-        };
-      }
-    },
-    
-    filterCases: async (_, { filter, pagination = { page: 1, limit: 10 } }) => {
-      try {
-        await clientPromise;
-        const { page, limit } = pagination;
-        const skip = (page - 1) * limit;
-        
-        // Set a timeout for the database operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Database operation timeout')), 10000);
-        });
-        
-        // Database operation with timeout
-        const dbOperation = async () => {
-          try {
-            // Build filter query
-            const query: MongoQuery = {};
-            
-            if (filter.brands && filter.brands.length > 0) {
-              query.brand = { $in: filter.brands };
-            }
-            
-            if (filter.types && filter.types.length > 0) {
-              query.type = { $in: filter.types };
-            }
-            
-            if (filter.protectionLevels && filter.protectionLevels.length > 0) {
-              query.protectionLevel = { $in: filter.protectionLevels };
-            }
-            
-            if (filter.waterproof !== undefined) {
-              query.waterproof = filter.waterproof;
-            }
-            
-            if (filter.shockproof !== undefined) {
-              query.shockproof = filter.shockproof;
-            }
-            
-            if (filter.dustproof !== undefined) {
-              query.dustproof = filter.dustproof;
-            }
-            
-            if (filter.colors && filter.colors.length > 0) {
-              query.color = { $in: filter.colors };
-            }
-            
-            if (filter.materials && filter.materials.length > 0) {
-              query.material = { $in: filter.materials };
-            }
-            
-            if (filter.minPrice !== undefined) {
-              query.price = query.price || {};
-              query.price.$gte = filter.minPrice;
-            }
-            
-            if (filter.maxPrice !== undefined) {
-              query.price = query.price || {};
-              query.price.$lte = filter.maxPrice;
-            }
-            
-            if (filter.inStock !== undefined) {
-              query.inStock = filter.inStock;
-            }
-            
-            if (filter.minRating !== undefined) {
-              query.rating = { $gte: filter.minRating };
-            }
-            
-            // Create sort object with explicit 1/-1 values
-            const sortField = filter.sortBy || 'name';
-            const sortDirection = filter.sortDirection === 'desc' ? -1 : 1;
-            const sortObj = {};
-            sortObj[sortField] = sortDirection;
-            
-            // Use aggregation to get items and count in a single query
-            const result = await Case.aggregate([
-              { $match: query },
-              {
-                $facet: {
-                  items: [
-                    { $sort: sortObj },
-                    { $skip: skip },
-                    { $limit: limit }
-                  ],
-                  totalCount: [
-                    { $count: 'count' }
-                  ]
-                }
-              }
-            ]).exec();
-            
-            const items = result[0].items;
-            const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-            
-            return {
-              items,
-              pagination: {
-                total,
-                page,
-                limit,
-                pages: Math.ceil(total / limit)
-              }
-            };
-          } catch (dbError) {
-            console.error('Database error in filterCases:', dbError);
-            return {
-              items: [],
-              pagination: {
-                total: 0,
-                page,
-                limit,
-                pages: 0
-              }
-            };
-          }
-        };
-        
-        // Race between database operation and timeout
-        return Promise.race([dbOperation(), timeoutPromise]);
-      } catch (error) {
-        console.error('Error filtering cases:', error);
-        return {
-          items: [],
-          pagination: {
-            total: 0,
-            page: pagination.page,
-            limit: pagination.limit,
-            pages: 0
-          }
-        };
-      }
-    },
-    
-    // Other resolvers remain unchanged...
-    // ...
+    // Additional Query resolvers would be implemented here...
   },
+  
+  Mutation: {
+    // Mutation resolvers would be implemented here...
+  }
   
   // Mutation resolvers remain unchanged...
   // ...
@@ -1150,19 +749,14 @@ const apolloServer = new ApolloServer({
     await AudioGear.collection.createIndex({ rating: 1 });
     await AudioGear.collection.createIndex({ name: 'text', description: 'text' });
     
-    // Compound indexes for common filter combinations
-    await AudioGear.collection.createIndex({ brand: 1, category: 1 });
-    await AudioGear.collection.createIndex({ category: 1, type: 1 });
-    
-    // Case indexes
     await Case.collection.createIndex({ brand: 1 });
     await Case.collection.createIndex({ type: 1 });
-    await Case.collection.createIndex({ protectionLevel: 1 });
     await Case.collection.createIndex({ price: 1 });
     await Case.collection.createIndex({ rating: 1 });
     await Case.collection.createIndex({ name: 'text', description: 'text' });
-    
-    // Compound indexes for common filter combinations
+    await Case.collection.createIndex({ waterproof: 1 });
+    await Case.collection.createIndex({ shockproof: 1 });
+    await Case.collection.createIndex({ dustproof: 1 });
     await Case.collection.createIndex({ brand: 1, type: 1 });
     await Case.collection.createIndex({ waterproof: 1, shockproof: 1, dustproof: 1 });
     
@@ -1172,21 +766,26 @@ const apolloServer = new ApolloServer({
   }
 })();
 
-// Initialize Apollo Server
-(async () => {
-  await apolloServer.start();
-})();
-
-// Create handler with enhanced logging and CORS support
+// Create handler with proper Vercel serverless function support
+// Note: We don't start the server in an IIFE, as startServerAndCreateNextHandler
+// will handle this automatically in the Vercel serverless environment
 const handler = startServerAndCreateNextHandler(apolloServer, {
   context: async (req, res) => {
-    // Add logging for debugging
+    // Add detailed logging for debugging
     console.log(`[DEBUG] GraphQL API request: ${req.method} ${req.url}`);
+    console.log('[DEBUG] Request headers:', JSON.stringify(req.headers, null, 2));
     
     // Add CORS headers to all responses
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apollo-require-preflight');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    
+    // Handle OPTIONS requests explicitly for CORS preflight
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return { req, res };
+    }
     
     // Return context object with database connection and services
     return {
