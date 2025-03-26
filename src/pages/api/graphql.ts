@@ -1,5 +1,6 @@
+import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { gql } from 'graphql-tag';  // Changed from @apollo/server
+import { gql } from 'graphql-tag';
 import { clientPromise, mongoose } from '../../lib/mongodb';
 import { AudioGear, Case, GearCaseMatch } from '../../lib/models/gear-models';
 import { User, Content, Analytics, IAffiliate } from '../../lib/models/website-models';
@@ -9,31 +10,13 @@ import { FeedbackManager } from '../../lib/matching/feedback-manager';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { SortOrder } from 'mongoose';
 import { Types } from 'mongoose';
-import { ApolloServer } from 'apollo-server-micro';
-import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
-import Cors from 'micro-cors';
 
 // Initialize services
 const productMatcher = new ProductMatcher();
 const recommendationEngine = new RecommendationEngine();
 const feedbackManager = new FeedbackManager();
 
-// Configure CORS
-const cors = Cors({
-  allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE', 'PATCH'],
-  allowHeaders: [
-    'X-Requested-With',
-    'Access-Control-Allow-Origin',
-    'X-HTTP-Method-Override',
-    'Content-Type',
-    'Authorization',
-    'Accept',
-    'apollo-require-preflight',
-    'Apollo-Require-Preflight'
-  ],
-  origin: '*',
-  credentials: true,
-});
+// CORS configuration will be handled by Next.js API routes
 
 // Define GraphQL schema
 const typeDefs = gql`
@@ -1147,13 +1130,10 @@ const resolvers = {
   // ...
 };
 
-// Create Apollo Server
+// Create Apollo Server with @apollo/server
 const apolloServer = new ApolloServer({
   typeDefs,
   resolvers,
-  plugins: [
-    ApolloServerPluginLandingPageGraphQLPlayground(),
-  ] as any,
   introspection: true,
 });
 
@@ -1192,42 +1172,33 @@ const apolloServer = new ApolloServer({
   }
 })();
 
-// Create handler function with enhanced CORS support
-const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  // Log request details for debugging
-  console.log(`GraphQL API request: ${req.method} ${req.url}`);
-  console.log('Headers:', req.headers);
-  
-  // Handle OPTIONS request for CORS preflight
-  if (req.method === 'OPTIONS') {
+// Initialize Apollo Server
+(async () => {
+  await apolloServer.start();
+})();
+
+// Create handler with enhanced logging and CORS support
+const handler = startServerAndCreateNextHandler(apolloServer, {
+  context: async (req, res) => {
+    // Add logging for debugging
+    console.log(`[DEBUG] GraphQL API request: ${req.method} ${req.url}`);
+    
+    // Add CORS headers to all responses
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, apollo-require-preflight, Apollo-Require-Preflight');
-    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.status(200).end();
-    return;
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    // Return context object with database connection and services
+    return {
+      req,
+      res,
+      db: mongoose.connection,
+      productMatcher,
+      recommendationEngine,
+      feedbackManager
+    };
   }
+});
 
-  // Add CORS headers to all responses
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, apollo-require-preflight, Apollo-Require-Preflight');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  // Special handling for GET requests to support Apollo Client configurations that use GET
-  if (req.method === 'GET') {
-    // For GET requests, we'll still use the Apollo handler but ensure it works properly
-    return apolloServer.createHandler({
-      path: '/api/graphql',
-    })(req, res);
-  }
-
-  // Use micro handler from apollo-server-micro for other methods (primarily POST)
-  return apolloServer.createHandler({
-    path: '/api/graphql',
-  })(req, res);
-};
-
-// Export the handler with CORS middleware
-export default cors(handler);
+// Export the handler directly
+export default handler;
