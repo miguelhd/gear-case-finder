@@ -5,7 +5,7 @@ import { AudioGear, Case, GearCaseMatch } from '../lib/models/gear-models';
 export const resolvers = {
   Query: {
     // Simple query to check if the API is working
-    __typename: () => 'Query',
+    apiStatus: () => 'API is operational',
     
     // Get all gear with pagination
     allGear: async (_, { pagination = { page: 1, limit: 10 } }) => {
@@ -344,14 +344,8 @@ export const resolvers = {
         const total = result.total[0]?.count || 0;
         const pages = Math.ceil(total / limit);
         
-        // Populate gear and case data
-        const populatedItems = await GearCaseMatch.populate(result.items, [
-          { path: 'gear', model: AudioGear },
-          { path: 'case', model: Case }
-        ]);
-        
         return {
-          items: populatedItems,
+          items: result.items,
           pagination: {
             total,
             page,
@@ -371,7 +365,6 @@ export const resolvers = {
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Execute query with aggregation
         const [result] = await GearCaseMatch.aggregate([
           { $match: { gearId } },
           {
@@ -391,14 +384,8 @@ export const resolvers = {
         const total = result.total[0]?.count || 0;
         const pages = Math.ceil(total / limit);
         
-        // Populate gear and case data
-        const populatedItems = await GearCaseMatch.populate(result.items, [
-          { path: 'gear', model: AudioGear },
-          { path: 'case', model: Case }
-        ]);
-        
         return {
-          items: populatedItems,
+          items: result.items,
           pagination: {
             total,
             page,
@@ -418,7 +405,6 @@ export const resolvers = {
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Execute query with aggregation
         const [result] = await GearCaseMatch.aggregate([
           { $match: { caseId } },
           {
@@ -438,14 +424,8 @@ export const resolvers = {
         const total = result.total[0]?.count || 0;
         const pages = Math.ceil(total / limit);
         
-        // Populate gear and case data
-        const populatedItems = await GearCaseMatch.populate(result.items, [
-          { path: 'gear', model: AudioGear },
-          { path: 'case', model: Case }
-        ]);
-        
         return {
-          items: populatedItems,
+          items: result.items,
           pagination: {
             total,
             page,
@@ -462,13 +442,30 @@ export const resolvers = {
     // Get a specific match
     match: async (_, { id }) => {
       try {
-        const match = await GearCaseMatch.findById(id)
-          .populate('gear')
-          .populate('case');
-        return match;
+        return await GearCaseMatch.findById(id);
       } catch (error) {
         console.error(`Error in match resolver for ID ${id}:`, error);
         throw new Error(`Failed to fetch match with ID ${id}`);
+      }
+    }
+  },
+  
+  // Resolvers for nested types
+  GearCaseMatch: {
+    gear: async (parent) => {
+      try {
+        return await AudioGear.findById(parent.gearId);
+      } catch (error) {
+        console.error(`Error resolving gear for match ${parent.id}:`, error);
+        return null;
+      }
+    },
+    case: async (parent) => {
+      try {
+        return await Case.findById(parent.caseId);
+      } catch (error) {
+        console.error(`Error resolving case for match ${parent.id}:`, error);
+        return null;
       }
     }
   }

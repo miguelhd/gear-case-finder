@@ -158,6 +158,6 @@ export const typeDefs = gql`
     match(id: ID!): GearCaseMatch
     
     # Query to check if the API is working
-    __typename: String!
+    apiStatus: String!
   }
 `;
