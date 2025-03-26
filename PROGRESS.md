@@ -2,6 +2,64 @@
 
 ## Latest Update: March 26, 2025
 
+### TypeScript and GraphQL Syntax Fixes for Vercel Deployment
+
+#### Issues Addressed
+1. **Set Iteration TypeScript Error**: Fixed "Type 'Set<unknown>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher" error.
+2. **Unknown Type Errors**: Resolved "Type 'unknown' is not assignable to type 'Key | null | undefined'" errors in component props.
+3. **Missing Component Properties**: Fixed "Property 'X' does not exist on type 'IntrinsicAttributes & ComponentProps'" errors.
+4. **GraphQL Dot Notation Syntax Error**: Addressed "Unexpected character: '.'" errors in GraphQL queries.
+5. **Missing React Import**: Fixed React reference errors in component files.
+
+#### Changes Made
+1. **TypeScript Configuration** (`tsconfig.json`):
+   - Updated target from "es5" to "es2015" to support Set iteration and spread syntax
+   - Maintained other TypeScript configuration settings
+
+2. **UI Components**:
+   - **Checkbox Component** (`src/components/ui/components/Checkbox.tsx`):
+     - Added support for indeterminate state with proper TypeScript interface
+     - Implemented useRef and useEffect to handle indeterminate checkbox state
+   - **Card Component** (`src/components/ui/components/Card.tsx`):
+     - Added price, rating, and reviewCount properties to interface
+     - Enhanced component to display price and ratings information
+
+3. **Pages**:
+   - **Cases Listing Page** (`src/pages/cases/index.tsx`):
+     - Added proper React import
+     - Added explicit type assertions for arrays returned from Set operations
+     - Modified GraphQL query to use separate variables for pagination parameters
+     - Updated query variables structure to match the new query format
+   - **Gear Listing Page** (`src/pages/gear/index.tsx`):
+     - Added explicit type assertions for arrays returned from Set operations
+     - Removed explicit type annotations in map functions causing type errors
+     - Modified GraphQL query to use separate variables for pagination parameters
+     - Updated query variables structure to match the new query format
+
+#### Technical Details
+- The main issue was related to TypeScript's handling of Set iteration in ES5 target mode
+- GraphQL queries were using dot notation to access properties of variables, which caused syntax errors
+- Component interfaces were missing properties that were being used in the JSX
+- The fix involved updating the TypeScript target to ES2015 and properly typing arrays and components
+- GraphQL queries were restructured to use separate variables instead of accessing properties of objects
+
+#### Next Steps
+1. Consider implementing GraphQL code generation for type-safe queries
+2. Add comprehensive error handling for GraphQL operations
+3. Implement unit tests for UI components with complex props
+4. Review and update other components that might have similar TypeScript issues
+5. Consider adding ESLint rules to enforce proper typing of arrays and components
+
+#### Testing Notes
+- The TypeScript and GraphQL fixes have been tested locally with a successful build
+- All pages now compile without TypeScript errors
+- The build process completes successfully with proper static and server-side rendering
+- These fixes should resolve the Vercel deployment errors related to TypeScript and GraphQL
+
+---
+
+## Previous Update: March 26, 2025
+
 ### GraphQL Schema Mismatch Fix
 
 #### Issues Addressed
