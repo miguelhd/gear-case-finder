@@ -2,25 +2,34 @@ import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { onError } from '@apollo/client/link/error';
 import { from } from '@apollo/client';
 
-// Error handling link
+// Error handling link with enhanced logging
 const errorLink = onError(({ graphQLErrors, networkError }) => {
-  if (graphQLErrors)
+  if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path }) =>
       console.error(
         `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
       )
     );
-  if (networkError) console.error(`[Network error]: ${networkError}`);
+  }
+  
+  if (networkError) {
+    console.error(`[Network error]: ${networkError}`);
+    // Log additional details for debugging
+    if ('statusCode' in networkError) {
+      console.error(`Status code: ${networkError.statusCode}`);
+    }
+    if ('response' in networkError) {
+      console.error(`Response: ${JSON.stringify(networkError.response)}`);
+    }
+  }
 });
 
-// HTTP link with explicit fetch options
+// HTTP link with explicit fetch options optimized for Vercel
 const httpLink = createHttpLink({
   uri: '/api/graphql',
   credentials: 'same-origin',
   headers: {
     'Content-Type': 'application/json',
-    'apollo-require-preflight': 'true',
-    'Apollo-Require-Preflight': 'true'
   },
   fetchOptions: {
     method: 'POST',
