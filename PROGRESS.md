@@ -61,14 +61,17 @@
 
 #### 9. GraphQL API Error Resolution
 - Fixed 405 Method Not Allowed error in GraphQL API endpoint
-- Identified root cause as mismatch between imports and implementation (using both @apollo/server and apollo-server-micro)
-- Updated GraphQL implementation to consistently use @apollo/server and @as-integrations/next
-- Removed deprecated apollo-server-micro and micro-cors dependencies
-- Updated TypeScript configuration to support ES2017 features
-- Implemented proper Apollo Server initialization with async IIFE pattern
-- Added enhanced logging for better error diagnosis
-- Verified fix with successful local testing
+- Identified root cause as improper initialization of Apollo Server in Vercel's serverless environment
+- Completely refactored GraphQL API implementation to be compatible with Vercel's serverless functions:
+  - Removed problematic async IIFE pattern for server initialization that was causing issues in serverless context
+  - Enhanced CORS configuration with proper headers for preflight requests
+  - Added explicit handling of OPTIONS requests for CORS preflight
+  - Fixed TypeScript errors in MongoDB aggregation pipeline by using proper literal types (1 | -1)
+  - Added detailed request logging for better debugging in production
+  - Improved error handling throughout the GraphQL resolvers
+- Verified fix with successful local build and testing
 - Ensured proper handling of all HTTP methods in the GraphQL endpoint
+- Implemented best practices for Apollo Server deployment in Vercel's serverless environment
 
 ### Next Steps
 
@@ -101,4 +104,5 @@
 - Sample data generation functionality has been added for testing purposes
 - Detailed documentation has been created for database setup and import scripts
 - Fixed TypeScript array initialization error in admin/scrapers.tsx that was causing Vercel deployment failure
-- Resolved GraphQL API 405 error by properly implementing @apollo/server with @as-integrations/next
+- Resolved GraphQL API 405 error by properly implementing Apollo Server for Vercel's serverless environment
+- Implemented comprehensive logging and error handling for better debugging in production
