@@ -5,24 +5,24 @@ import Head from 'next/head';
 
 // GraphQL query for fetching cases with pagination and filtering
 const GET_CASES = gql`
-  query GetCases($filter: FilterInput) {
-    paginatedCases(filter: $filter) {
+  query GetCases($filter: CaseFilterInput) {
+    filterCases(filter: $filter, pagination: { page: $filter.page, limit: $filter.limit }) {
       items {
         id
         name
         brand
         type
-        marketplace
+        imageUrl
         price
         currency
-        imageUrls
         rating
         reviewCount
         protectionLevel
         waterproof
         shockproof
-        hasHandle
-        hasWheels
+        dustproof
+        color
+        material
         internalDimensions {
           length
           width
@@ -37,10 +37,16 @@ const GET_CASES = gql`
         pages
       }
     }
-    caseTypes
-    caseBrands
-    caseMarketplaces
-    casePriceRange
+    caseTypes: allCases(pagination: { limit: 100 }) {
+      items {
+        type
+      }
+    }
+    caseBrands: allCases(pagination: { limit: 100 }) {
+      items {
+        brand
+      }
+    }
   }
 `;
 
@@ -52,49 +58,27 @@ const CasesPage: React.FC = () => {
   // State for filters
   const [selectedTypes, setSelectedTypes] = React.useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = React.useState<string[]>([]);
-  const [selectedMarketplaces, setSelectedMarketplaces] = React.useState<string[]>([]);
   const [selectedProtectionLevels, setSelectedProtectionLevels] = React.useState<string[]>([]);
   const [minPrice, setMinPrice] = React.useState<number>(0);
   const [maxPrice, setMaxPrice] = React.useState<number>(1000);
-  const [hasHandle, setHasHandle] = React.useState<boolean | undefined>(undefined);
-  const [hasWheels, setHasWheels] = React.useState<boolean | undefined>(undefined);
   const [waterproof, setWaterproof] = React.useState<boolean | undefined>(undefined);
   const [shockproof, setShockproof] = React.useState<boolean | undefined>(undefined);
+  const [dustproof, setDustproof] = React.useState<boolean | undefined>(undefined);
   const [sortBy, setSortBy] = React.useState('rating');
   const [sortDirection, setSortDirection] = React.useState('desc');
 
-  // Define interface for the query result
-  interface CasesQueryResult {
-    paginatedCases: {
-      items: any[];
-      pagination: {
-        total: number;
-        page: number;
-        limit: number;
-        pages: number;
-      };
-    };
-    caseTypes: string[];
-    caseBrands: string[];
-    caseMarketplaces: string[];
-    casePriceRange: number[];
-  }
-
   // Query for cases with filters
-  // @ts-ignore - Temporarily ignore TypeScript error for data typing
-  const { loading, error, data } = useQuery<CasesQueryResult, { filter: any }>(GET_CASES, {
+  const { loading, error, data } = useQuery(GET_CASES, {
     variables: {
       filter: {
         types: selectedTypes.length > 0 ? selectedTypes : undefined,
         brands: selectedBrands.length > 0 ? selectedBrands : undefined,
-        marketplaces: selectedMarketplaces.length > 0 ? selectedMarketplaces : undefined,
         protectionLevels: selectedProtectionLevels.length > 0 ? selectedProtectionLevels : undefined,
         minPrice: minPrice > 0 ? minPrice : undefined,
         maxPrice: maxPrice < 1000 ? maxPrice : undefined,
-        hasWheels,
-        hasHandle,
         waterproof,
         shockproof,
+        dustproof,
         sortBy,
         sortDirection,
         page,
@@ -104,18 +88,29 @@ const CasesPage: React.FC = () => {
     fetchPolicy: 'cache-and-network'
   });
 
+  // Extract unique types and brands from the data
+  const types = React.useMemo(() => {
+    if (!data?.caseTypes?.items) return [];
+    const allTypes = data.caseTypes.items.map((item: any) => item.type);
+    return [...new Set(allTypes)].filter(Boolean);
+  }, [data?.caseTypes]);
+
+  const brands = React.useMemo(() => {
+    if (!data?.caseBrands?.items) return [];
+    const allBrands = data.caseBrands.items.map((item: any) => item.brand);
+    return [...new Set(allBrands)].filter(Boolean);
+  }, [data?.caseBrands]);
+
   // Reset all filters
   const clearFilters = () => {
     setSelectedTypes([]);
     setSelectedBrands([]);
-    setSelectedMarketplaces([]);
     setSelectedProtectionLevels([]);
     setMinPrice(0);
     setMaxPrice(1000);
-    setHasHandle(undefined);
-    setHasWheels(undefined);
     setWaterproof(undefined);
     setShockproof(undefined);
+    setDustproof(undefined);
     setSortBy('rating');
     setSortDirection('desc');
     setPage(1);
@@ -176,7 +171,7 @@ const CasesPage: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Case Types</h3>
                 <div className="space-y-2">
-                  {data?.caseTypes?.map((type) => (
+                  {types.map((type) => (
                     <Checkbox
                       key={type}
                       id={`type-${type}`}
@@ -192,29 +187,13 @@ const CasesPage: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brands</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {data?.caseBrands?.map((brand) => (
+                  {brands.map((brand) => (
                     <Checkbox
                       key={brand}
                       id={`brand-${brand}`}
                       label={brand || 'Unbranded'}
                       checked={selectedBrands.includes(brand)}
                       onChange={() => handleCheckboxChange(brand, selectedBrands, setSelectedBrands)}
-                    />
-                  ))}
-                </div>
-              </div>
-              
-              {/* Marketplaces filter */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Marketplaces</h3>
-                <div className="space-y-2">
-                  {data?.caseMarketplaces?.map((marketplace) => (
-                    <Checkbox
-                      key={marketplace}
-                      id={`marketplace-${marketplace}`}
-                      label={marketplace}
-                      checked={selectedMarketplaces.includes(marketplace)}
-                      onChange={() => handleCheckboxChange(marketplace, selectedMarketplaces, setSelectedMarketplaces)}
                     />
                   ))}
                 </div>
@@ -281,25 +260,22 @@ const CasesPage: React.FC = () => {
                     id="feature-waterproof"
                     label="Waterproof"
                     checked={waterproof === true}
+                    indeterminate={waterproof === undefined}
                     onChange={() => handleBooleanFilterChange(waterproof, setWaterproof)}
                   />
                   <Checkbox
                     id="feature-shockproof"
                     label="Shockproof"
                     checked={shockproof === true}
+                    indeterminate={shockproof === undefined}
                     onChange={() => handleBooleanFilterChange(shockproof, setShockproof)}
                   />
                   <Checkbox
-                    id="feature-handle"
-                    label="Has Handle"
-                    checked={hasHandle === true}
-                    onChange={() => handleBooleanFilterChange(hasHandle, setHasHandle)}
-                  />
-                  <Checkbox
-                    id="feature-wheels"
-                    label="Has Wheels"
-                    checked={hasWheels === true}
-                    onChange={() => handleBooleanFilterChange(hasWheels, setHasWheels)}
+                    id="feature-dustproof"
+                    label="Dustproof"
+                    checked={dustproof === true}
+                    indeterminate={dustproof === undefined}
+                    onChange={() => handleBooleanFilterChange(dustproof, setDustproof)}
                   />
                 </div>
               </div>
@@ -318,23 +294,27 @@ const CasesPage: React.FC = () => {
                     options={[
                       { value: 'rating', label: 'Rating' },
                       { value: 'price', label: 'Price' },
-                      { value: 'reviewCount', label: 'Review Count' }
+                      { value: 'name', label: 'Name' }
                     ]}
                     className="flex-grow"
                   />
-                  <Select
-                    id="sort-direction"
-                    value={sortDirection}
-                    onChange={(e) => {
-                      setSortDirection(e.target.value);
+                  <button
+                    onClick={() => {
+                      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
                       setPage(1);
                     }}
-                    options={[
-                      { value: 'desc', label: 'Descending' },
-                      { value: 'asc', label: 'Ascending' }
-                    ]}
-                    className="flex-grow"
-                  />
+                    className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                  >
+                    {sortDirection === 'asc' ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
               
@@ -359,13 +339,14 @@ const CasesPage: React.FC = () => {
             ) : error ? (
               <div className="bg-red-50 dark:bg-red-900 p-4 rounded-lg">
                 <p className="text-red-800 dark:text-red-200">Error loading cases. Please try again later.</p>
+                <pre className="mt-2 text-xs overflow-auto max-h-40">{JSON.stringify(error, null, 2)}</pre>
               </div>
             ) : (
               <>
                 {/* Results count */}
                 <div className="mb-4 flex justify-between items-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Showing {data?.paginatedCases?.items?.length || 0} of {data?.paginatedCases?.pagination?.total || 0} items
+                    Showing {data?.filterCases?.items?.length || 0} of {data?.filterCases?.pagination?.total || 0} items
                   </p>
                   <Select
                     id="items-per-page"
@@ -384,23 +365,23 @@ const CasesPage: React.FC = () => {
                 </div>
                 
                 {/* Grid of cases */}
-                {data?.paginatedCases?.items && data.paginatedCases.items.length > 0 ? (
+                {data?.filterCases?.items?.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {data.paginatedCases.items.map((caseItem: any) => (
+                    {data.filterCases.items.map((caseItem: any) => (
                       <Card
                         key={caseItem.id}
                         title={caseItem.name}
-                        image={caseItem.imageUrls?.[0] || '/images/placeholder-case.jpg'}
-                        description={`${caseItem.brand || 'Unbranded'} • ${caseItem.type} • ${formatPrice(caseItem.price, caseItem.currency)}`}
+                        image={caseItem.imageUrl || '/images/placeholder-case.jpg'}
+                        description={`${caseItem.brand || 'Unbranded'} • ${caseItem.type}`}
                         link={`/cases/${caseItem.id}`}
                         badges={[
-                          caseItem.protectionLevel && `Protection: ${caseItem.protectionLevel.charAt(0).toUpperCase() + caseItem.protectionLevel.slice(1)}`,
+                          caseItem.protectionLevel && caseItem.protectionLevel.charAt(0).toUpperCase() + caseItem.protectionLevel.slice(1),
                           caseItem.waterproof && 'Waterproof',
-                          caseItem.shockproof && 'Shockproof',
-                          caseItem.hasHandle && 'Has Handle',
-                          caseItem.hasWheels && 'Has Wheels',
-                          caseItem.rating && `Rating: ${caseItem.rating}/5`
+                          caseItem.shockproof && 'Shockproof'
                         ].filter(Boolean)}
+                        price={caseItem.price ? formatPrice(caseItem.price, caseItem.currency) : undefined}
+                        rating={caseItem.rating}
+                        reviewCount={caseItem.reviewCount}
                       />
                     ))}
                   </div>
@@ -413,15 +394,12 @@ const CasesPage: React.FC = () => {
                 )}
                 
                 {/* Pagination */}
-                {data?.paginatedCases?.pagination?.pages && data.paginatedCases.pagination.pages > 1 && (
+                {data?.filterCases?.pagination?.pages > 1 && (
                   <div className="mt-8">
                     <Pagination
                       currentPage={page}
-                      totalPages={data.paginatedCases.pagination.pages}
-                      onPageChange={(newPage) => {
-                        setPage(newPage);
-                        window.scrollTo(0, 0);
-                      }}
+                      totalPages={data.filterCases.pagination.pages}
+                      onPageChange={handlePageChange}
                     />
                   </div>
                 )}

@@ -5,8 +5,8 @@ import Head from 'next/head';
 
 // GraphQL query for fetching gear items with pagination and filtering
 const GET_GEAR_ITEMS = gql`
-  query GetGearItems($filter: FilterInput) {
-    paginatedGear(filter: $filter) {
+  query GetGearItems($filter: GearFilterInput) {
+    filterGear(filter: $filter, pagination: { page: $filter.page, limit: $filter.limit }) {
       items {
         id
         name
@@ -28,8 +28,16 @@ const GET_GEAR_ITEMS = gql`
         pages
       }
     }
-    gearCategories
-    gearBrands
+    gearCategories: allGear(pagination: { limit: 100 }) {
+      items {
+        category
+      }
+    }
+    gearBrands: allGear(pagination: { limit: 100 }) {
+      items {
+        brand
+      }
+    }
   }
 `;
 
@@ -55,6 +63,19 @@ const GearListingPage: React.FC = () => {
       }
     }
   });
+
+  // Extract unique categories and brands from the data
+  const categories = React.useMemo(() => {
+    if (!data?.gearCategories?.items) return [];
+    const allCategories = data.gearCategories.items.map((item: any) => item.category);
+    return [...new Set(allCategories)].filter(Boolean);
+  }, [data?.gearCategories]);
+
+  const brands = React.useMemo(() => {
+    if (!data?.gearBrands?.items) return [];
+    const allBrands = data.gearBrands.items.map((item: any) => item.brand);
+    return [...new Set(allBrands)].filter(Boolean);
+  }, [data?.gearBrands]);
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
@@ -128,7 +149,7 @@ const GearListingPage: React.FC = () => {
                   <p className="text-sm text-red-500">Error loading categories</p>
                 ) : (
                   <div className="space-y-2">
-                    {data?.gearCategories?.map((category: string) => (
+                    {categories.map((category: string) => (
                       <Checkbox
                         key={category}
                         id={`category-${category}`}
@@ -152,7 +173,7 @@ const GearListingPage: React.FC = () => {
                   <p className="text-sm text-red-500">Error loading brands</p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {data?.gearBrands?.map((brand: string) => (
+                    {brands.map((brand: string) => (
                       <Checkbox
                         key={brand}
                         id={`brand-${brand}`}
@@ -218,13 +239,14 @@ const GearListingPage: React.FC = () => {
             ) : error ? (
               <div className="bg-red-50 dark:bg-red-900 p-4 rounded-lg">
                 <p className="text-red-800 dark:text-red-200">Error loading gear items. Please try again later.</p>
+                <pre className="mt-2 text-xs overflow-auto max-h-40">{JSON.stringify(error, null, 2)}</pre>
               </div>
             ) : (
               <>
                 {/* Results count */}
                 <div className="mb-4 flex justify-between items-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Showing {data?.paginatedGear?.items?.length || 0} of {data?.paginatedGear?.pagination?.total || 0} items
+                    Showing {data?.filterGear?.items?.length || 0} of {data?.filterGear?.pagination?.total || 0} items
                   </p>
                   <Select
                     id="items-per-page"
@@ -243,9 +265,9 @@ const GearListingPage: React.FC = () => {
                 </div>
                 
                 {/* Grid of gear items */}
-                {data?.paginatedGear?.items?.length > 0 ? (
+                {data?.filterGear?.items?.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {data.paginatedGear.items.map((gear: any) => (
+                    {data.filterGear.items.map((gear: any) => (
                       <Card
                         key={gear.id}
                         title={gear.name}
@@ -265,11 +287,11 @@ const GearListingPage: React.FC = () => {
                 )}
                 
                 {/* Pagination */}
-                {data?.paginatedGear?.pagination?.pages > 1 && (
+                {data?.filterGear?.pagination?.pages > 1 && (
                   <div className="mt-8">
                     <Pagination
                       currentPage={page}
-                      totalPages={data.paginatedGear.pagination.pages}
+                      totalPages={data.filterGear.pagination.pages}
                       onPageChange={handlePageChange}
                     />
                   </div>

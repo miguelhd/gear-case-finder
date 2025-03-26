@@ -2,6 +2,52 @@
 
 ## Latest Update: March 26, 2025
 
+### GraphQL Schema Mismatch Fix
+
+#### Issues Addressed
+1. **GraphQL Schema Mismatch**: Fixed 400 errors caused by client components querying non-existent GraphQL fields.
+2. **Client-Server Schema Inconsistency**: Resolved discrepancy between client queries and server schema definitions.
+3. **GraphQL Query Syntax Error**: Fixed syntax errors in GraphQL template literals.
+4. **Data Fetching Failures**: Addressed issues preventing data from being fetched properly.
+
+#### Changes Made
+1. **Gear Listing Page** (`src/pages/gear/index.tsx`):
+   - Changed query from non-existent `paginatedGear` to existing `filterGear` field
+   - Updated query structure to match server schema with proper pagination parameters
+   - Fixed GraphQL template literal syntax errors
+   - Modified data extraction logic to work with the updated query structure
+   - Added error details display for better debugging
+
+2. **Cases Listing Page** (`src/pages/cases/index.tsx`):
+   - Changed query from non-existent `paginatedCases` to existing `filterCases` field
+   - Updated query structure to match server schema with proper pagination parameters
+   - Improved data extraction for categories, types, and brands
+   - Enhanced error handling and display
+
+#### Technical Details
+- The root cause was a mismatch between client queries and server schema definitions
+- Client components were querying for fields like `paginatedGear` and `paginatedCases` that don't exist in the server schema
+- The server schema defines fields like `filterGear`, `allGear`, `filterCases`, and `allCases` instead
+- This mismatch resulted in 400 Bad Request errors with "Field 'paginatedGear' doesn't exist on type 'Query'"
+- The fix involved updating client queries to use the correct field names and structure
+- We also had to modify how categories and brands were extracted from the query results
+
+#### Next Steps
+1. Update other components that might be using the same non-existent GraphQL fields
+2. Add comprehensive error handling for GraphQL operations
+3. Consider adding schema validation in development to catch similar issues early
+4. Implement proper TypeScript types for GraphQL queries using code generation
+
+#### Testing Notes
+- The schema fixes have been tested locally with the development server
+- Initial testing shows the gear and cases pages now load without 400 errors
+- The GraphQL queries are now properly aligned with the server schema
+- Some styling and UI adjustments may be needed to fully accommodate the new data structure
+
+---
+
+## Previous Update: March 26, 2025
+
 ### GraphQL API TypeScript Fixes
 
 #### Issues Addressed
