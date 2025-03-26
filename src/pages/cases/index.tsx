@@ -5,8 +5,8 @@ import Head from 'next/head';
 
 // GraphQL query for fetching cases with pagination and filtering
 const GET_CASES = gql`
-  query GetCases($filter: CaseFilterInput) {
-    filterCases(filter: $filter, pagination: { page: $filter.page, limit: $filter.limit }) {
+  query GetCases($filter: CaseFilterInput, $page: Int, $limit: Int) {
+    filterCases(filter: $filter, pagination: { page: $page, limit: $limit }) {
       items {
         id
         name
@@ -55,6 +55,12 @@ const CasesPage: React.FC = () => {
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(24);
   
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo(0, 0);
+  };
+  
   // State for filters
   const [selectedTypes, setSelectedTypes] = React.useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = React.useState<string[]>([]);
@@ -80,25 +86,25 @@ const CasesPage: React.FC = () => {
         shockproof,
         dustproof,
         sortBy,
-        sortDirection,
-        page,
-        limit
-      }
+        sortDirection
+      },
+      page,
+      limit
     },
     fetchPolicy: 'cache-and-network'
   });
 
   // Extract unique types and brands from the data
   const types = React.useMemo(() => {
-    if (!data?.caseTypes?.items) return [];
+    if (!data?.caseTypes?.items) return [] as string[];
     const allTypes = data.caseTypes.items.map((item: any) => item.type);
-    return [...new Set(allTypes)].filter(Boolean);
+    return [...new Set(allTypes)].filter(Boolean) as string[];
   }, [data?.caseTypes]);
 
   const brands = React.useMemo(() => {
-    if (!data?.caseBrands?.items) return [];
+    if (!data?.caseBrands?.items) return [] as string[];
     const allBrands = data.caseBrands.items.map((item: any) => item.brand);
-    return [...new Set(allBrands)].filter(Boolean);
+    return [...new Set(allBrands)].filter(Boolean) as string[];
   }, [data?.caseBrands]);
 
   // Reset all filters

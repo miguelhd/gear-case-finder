@@ -1,12 +1,13 @@
 import React from 'react';
 
-interface CheckboxProps {
+export interface CheckboxProps {
   id: string;
   label: string;
   checked: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   disabled?: boolean;
   className?: string;
+  indeterminate?: boolean;
 }
 
 const Checkbox: React.FC<CheckboxProps> = ({
@@ -15,11 +16,21 @@ const Checkbox: React.FC<CheckboxProps> = ({
   checked,
   onChange,
   disabled = false,
-  className = ''
+  className = '',
+  indeterminate = false
 }) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
   return (
     <div className={`flex items-center ${className}`}>
       <input
+        ref={inputRef}
         id={id}
         type="checkbox"
         checked={checked}

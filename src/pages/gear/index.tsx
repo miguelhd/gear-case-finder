@@ -5,8 +5,8 @@ import Head from 'next/head';
 
 // GraphQL query for fetching gear items with pagination and filtering
 const GET_GEAR_ITEMS = gql`
-  query GetGearItems($filter: GearFilterInput) {
-    filterGear(filter: $filter, pagination: { page: $filter.page, limit: $filter.limit }) {
+  query GetGearItems($filter: GearFilterInput, $page: Int, $limit: Int) {
+    filterGear(filter: $filter, pagination: { page: $page, limit: $limit }) {
       items {
         id
         name
@@ -56,25 +56,25 @@ const GearListingPage: React.FC = () => {
       filter: {
         categories: selectedCategories.length > 0 ? selectedCategories : undefined,
         brands: selectedBrands.length > 0 ? selectedBrands : undefined,
-        page,
-        limit,
         sortBy,
         sortDirection
-      }
+      },
+      page,
+      limit
     }
   });
 
   // Extract unique categories and brands from the data
   const categories = React.useMemo(() => {
-    if (!data?.gearCategories?.items) return [];
+    if (!data?.gearCategories?.items) return [] as string[];
     const allCategories = data.gearCategories.items.map((item: any) => item.category);
-    return [...new Set(allCategories)].filter(Boolean);
+    return [...new Set(allCategories)].filter(Boolean) as string[];
   }, [data?.gearCategories]);
 
   const brands = React.useMemo(() => {
-    if (!data?.gearBrands?.items) return [];
+    if (!data?.gearBrands?.items) return [] as string[];
     const allBrands = data.gearBrands.items.map((item: any) => item.brand);
-    return [...new Set(allBrands)].filter(Boolean);
+    return [...new Set(allBrands)].filter(Boolean) as string[];
   }, [data?.gearBrands]);
 
   // Handle page change
@@ -149,7 +149,7 @@ const GearListingPage: React.FC = () => {
                   <p className="text-sm text-red-500">Error loading categories</p>
                 ) : (
                   <div className="space-y-2">
-                    {categories.map((category: string) => (
+                    {categories.map((category) => (
                       <Checkbox
                         key={category}
                         id={`category-${category}`}
@@ -173,7 +173,7 @@ const GearListingPage: React.FC = () => {
                   <p className="text-sm text-red-500">Error loading brands</p>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {brands.map((brand: string) => (
+                    {brands.map((brand) => (
                       <Checkbox
                         key={brand}
                         id={`brand-${brand}`}
