@@ -12,12 +12,14 @@
   - Added robust error handling to return partial results instead of failing completely
 
 ### 2. 405 Method Not Allowed error in GraphQL API
-- **Root Cause**: Missing CORS configuration in the GraphQL API handler, causing it to reject OPTIONS requests
+- **Root Cause**: Insufficient CORS configuration in the GraphQL API handler, causing it to reject OPTIONS requests and Apollo-specific headers
 - **Solution Implemented**:
   - Added proper CORS configuration using the micro-cors package
   - Added explicit handling for OPTIONS requests to respond correctly to browser preflight checks
-  - Added appropriate CORS headers to all responses
-  - Configured allowed HTTP methods and headers
+  - Added Apollo-specific headers ('apollo-require-preflight' and 'Apollo-Require-Preflight') to the allowed headers list
+  - Added special handling for GET requests that might be used by some Apollo Client configurations
+  - Enhanced CORS preflight handling with Access-Control-Max-Age header
+  - Improved error handling and request logging for better troubleshooting
 
 ### 3. Repository Management
 - Added proper .gitignore file to exclude node_modules and build artifacts from Git tracking
@@ -50,8 +52,10 @@
 - Configured the following CORS headers:
   - Access-Control-Allow-Origin: *
   - Access-Control-Allow-Methods: POST, GET, OPTIONS, PUT, DELETE, PATCH
-  - Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With
+  - Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, apollo-require-preflight, Apollo-Require-Preflight
   - Access-Control-Allow-Credentials: true
+  - Access-Control-Max-Age: 86400 (24 hours)
+- Added special handling for GET requests to support different Apollo Client configurations
 
 ## Next Steps
 1. Deploy the changes to Vercel to verify the fixes in production
