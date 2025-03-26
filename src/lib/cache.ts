@@ -1,5 +1,5 @@
 // Cache implementation for performance optimization
-import { LRUCache } from 'lru-cache';
+import LRUCache from 'lru-cache';
 
 // Define cache options
 const options = {

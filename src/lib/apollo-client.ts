@@ -1,5 +1,6 @@
-import { ApolloClient, InMemoryCache, HttpLink, from } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { onError } from '@apollo/client/link/error';
+import { from } from '@apollo/client';
 
 // Error handling link
 const errorLink = onError(({ graphQLErrors, networkError }) => {
@@ -13,7 +14,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 });
 
 // HTTP link with explicit fetch options
-const httpLink = new HttpLink({
+const httpLink = createHttpLink({
   uri: '/api/graphql',
   credentials: 'same-origin',
   headers: {
@@ -22,8 +23,7 @@ const httpLink = new HttpLink({
     'Apollo-Require-Preflight': 'true'
   },
   fetchOptions: {
-    mode: 'cors',
-    method: 'POST'
+    method: 'POST',
   },
 });
 
@@ -35,7 +35,7 @@ export const client = new ApolloClient({
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: {
-      fetchPolicy: 'cache-and-network',
+      fetchPolicy: 'network-only',
       errorPolicy: 'all',
     },
     query: {
