@@ -1,20 +1,21 @@
 // Cache implementation for performance optimization
-import * as LRUCacheModule from 'lru-cache';
+// Import LRUCache directly without relying on module structure
+// This approach works in both local and Vercel environments
+const LRUCache = require('lru-cache');
 
 // Define cache options
 const options = {
   max: 500, // Maximum number of items in cache
   ttl: 1000 * 60 * 5, // Time to live: 5 minutes
   maxSize: 5000000, // Maximum cache size in bytes (approximately)
-  sizeCalculation: (value: any, key: string) => {
+  sizeCalculation: (value, key) => {
     // Approximate size calculation based on JSON stringification
     return JSON.stringify(value).length + (key ? key.length : 0);
   },
   allowStale: false,
 };
 
-// Create cache instance with proper constructor access
-const LRUCache = LRUCacheModule.default || LRUCacheModule;
+// Create cache instance with direct constructor
 const cache = new LRUCache(options);
 
 // Track hits and misses for hit rate calculation
@@ -34,7 +35,7 @@ export function getCache() {
  * @param key - Cache key
  * @returns The cached value or undefined if not found
  */
-export function getCacheItem(key: string): any {
+export function getCacheItem(key) {
   const value = cache.get(key);
   if (value === undefined) {
     misses++;
@@ -50,7 +51,7 @@ export function getCacheItem(key: string): any {
  * @param value - Value to cache
  * @param ttl - Optional custom TTL in milliseconds
  */
-export function setCacheItem(key: string, value: any, ttl?: number): void {
+export function setCacheItem(key, value, ttl) {
   cache.set(key, value, { ttl });
 }
 
@@ -59,14 +60,14 @@ export function setCacheItem(key: string, value: any, ttl?: number): void {
  * @param key - Cache key
  * @returns True if the item was removed, false if it wasn't in the cache
  */
-export function removeCacheItem(key: string): boolean {
+export function removeCacheItem(key) {
   return cache.delete(key);
 }
 
 /**
  * Clear the entire cache
  */
-export function clearCache(): void {
+export function clearCache() {
   cache.clear();
   hits = 0;
   misses = 0;
@@ -99,19 +100,15 @@ export function getCacheStats() {
  * @param ttl - Optional custom TTL in milliseconds
  * @returns Wrapped function that uses cache
  */
-export function withCache<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
-  keyPrefix: string,
-  ttl?: number
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
-  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+export function withCache(fn, keyPrefix, ttl) {
+  return async (...args) => {
     // Create cache key from function name, prefix and stringified arguments
     const key = `${keyPrefix}:${JSON.stringify(args)}`;
     
     // Try to get from cache first
     const cachedResult = getCacheItem(key);
     if (cachedResult !== undefined) {
-      return cachedResult as ReturnType<T>;
+      return cachedResult;
     }
     
     // If not in cache, call the original function
