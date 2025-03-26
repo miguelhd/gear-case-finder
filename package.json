@@ -10,7 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "cypress run",
-    "cypress": "cypress open"
+    "cypress": "cypress open",
+    "db:setup": "node scripts/db-setup/index.js",
+    "db:test-connection": "node scripts/db-setup/test-connection.js"
   },
   "dependencies": {
     "@apollo/client": "^3.8.0",
