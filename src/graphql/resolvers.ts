@@ -1,6 +1,7 @@
-// Enhanced GraphQL resolvers with improved error handling, debugging, and proper TypeScript types
+// Enhanced GraphQL resolvers with improved MongoDB connection handling
 import mongoose from 'mongoose';
 import { AudioGear, Case, GearCaseMatch } from '../lib/models/gear-models';
+import { connectToMongoDB, collectionExists } from '../lib/mongodb';
 
 // Define interface for GearCaseMatch document from MongoDB
 interface IGearCaseMatchDocument {
@@ -22,9 +23,15 @@ interface IGearCaseMatchDocument {
 export const resolvers = {
   Query: {
     // Simple query to check if the API is working
-    apiStatus: () => {
+    apiStatus: async () => {
       console.log('API status check - MongoDB connection state:', mongoose.connection.readyState);
-      return 'API is operational';
+      try {
+        await connectToMongoDB();
+        return 'API is operational and database is connected';
+      } catch (error) {
+        console.error('API status check - Database connection error:', error);
+        return 'API is operational but database connection failed';
+      }
     },
     
     // Get all gear with pagination
@@ -32,21 +39,12 @@ export const resolvers = {
       try {
         console.log('Executing allGear query with pagination:', pagination);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected (state:', mongoose.connection.readyState, ') - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-            console.log('Reconnected to MongoDB successfully');
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: AudioGear.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(AudioGear.collection.name);
+        if (!exists) {
           console.error(`${AudioGear.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -90,15 +88,8 @@ export const resolvers = {
       try {
         console.log(`Executing gear query for ID: ${id}`);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
         const item = await AudioGear.findById(id).lean();
         console.log('Retrieved gear item:', item ? 'Found' : 'Not found');
@@ -114,21 +105,12 @@ export const resolvers = {
       try {
         console.log('Executing filterGear query with filter:', filter, 'and pagination:', pagination);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected (state:', mongoose.connection.readyState, ') - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-            console.log('Reconnected to MongoDB successfully');
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: AudioGear.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(AudioGear.collection.name);
+        if (!exists) {
           console.error(`${AudioGear.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -231,20 +213,12 @@ export const resolvers = {
       try {
         console.log('Executing allCases query with pagination:', pagination);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: Case.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(Case.collection.name);
+        if (!exists) {
           console.error(`${Case.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -288,15 +262,8 @@ export const resolvers = {
       try {
         console.log(`Executing case query for ID: ${id}`);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
         const item = await Case.findById(id).lean();
         console.log('Retrieved case item:', item ? 'Found' : 'Not found');
@@ -312,20 +279,12 @@ export const resolvers = {
       try {
         console.log('Executing filterCases query with filter:', filter, 'and pagination:', pagination);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: Case.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(Case.collection.name);
+        if (!exists) {
           console.error(`${Case.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -428,20 +387,12 @@ export const resolvers = {
       try {
         console.log('Executing matches query with filter:', filter, 'and pagination:', pagination);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(GearCaseMatch.collection.name);
+        if (!exists) {
           console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -525,20 +476,12 @@ export const resolvers = {
       try {
         console.log(`Executing matchesForGear query for gear ID: ${gearId}`);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(GearCaseMatch.collection.name);
+        if (!exists) {
           console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -595,20 +538,12 @@ export const resolvers = {
       try {
         console.log(`Executing matchesForCase query for case ID: ${caseId}`);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(GearCaseMatch.collection.name);
+        if (!exists) {
           console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
@@ -665,20 +600,12 @@ export const resolvers = {
       try {
         console.log(`Executing match query for ID: ${id}`);
         
-        // Check MongoDB connection
-        if (mongoose.connection.readyState !== 1) {
-          console.warn('MongoDB not connected - attempting to reconnect');
-          try {
-            await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
-          } catch (connError) {
-            console.error('Failed to reconnect to MongoDB:', connError);
-          }
-        }
+        // Ensure MongoDB is connected with enhanced connection handling
+        await connectToMongoDB();
         
-        // Check if collection exists and has documents
-        // Use the model name directly instead of hardcoded collection name
-        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
-        if (!collectionExists) {
+        // Check if collection exists using the safe method
+        const exists = await collectionExists(GearCaseMatch.collection.name);
+        if (!exists) {
           console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
           return null;
         }
