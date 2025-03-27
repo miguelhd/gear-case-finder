@@ -8,14 +8,20 @@
 import mongoose from 'mongoose';
 import connectToMongoDB from '../mongodb';
 
-interface Dimensions {
+/**
+ * Represents the physical dimensions of an object.
+ */
+export interface IDimensions {
   length: number;
   width: number;
   height: number;
   unit: string;
 }
 
-interface CompatibleCaseDimensions {
+/**
+ * Represents the dimensional requirements for a compatible case.
+ */
+export interface ICompatibleCaseDimensions {
   minLength: number;
   maxLength: number;
   minWidth: number;
@@ -25,12 +31,16 @@ interface CompatibleCaseDimensions {
   unit: string;
 }
 
-interface InstrumentDimensions {
+/**
+ * Represents the dimensions of a musical instrument or audio gear
+ * along with compatible case requirements.
+ */
+export interface IInstrumentDimensions {
   instrumentType: string;
   brand: string;
   model: string;
-  dimensions: Dimensions;
-  compatibleCaseDimensions: CompatibleCaseDimensions;
+  dimensions: IDimensions;
+  compatibleCaseDimensions: ICompatibleCaseDimensions;
   lastVerified: Date;
 }
 
@@ -95,7 +105,7 @@ export class DimensionCacheService {
    */
   private async prePopulateCommonInstruments(): Promise<void> {
     try {
-      const commonInstruments: InstrumentDimensions[] = [
+      const commonInstruments: IInstrumentDimensions[] = [
         {
           instrumentType: 'synthesizer',
           brand: 'Korg',
@@ -188,7 +198,7 @@ export class DimensionCacheService {
   /**
    * Get instrument dimensions by brand and model
    */
-  async getInstrumentDimensions(brand: string, model: string): Promise<InstrumentDimensions | null> {
+  async getInstrumentDimensions(brand: string, model: string): Promise<IInstrumentDimensions | null> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -201,7 +211,7 @@ export class DimensionCacheService {
         model: { $regex: new RegExp(model, 'i') }
       });
       
-      return instrument as InstrumentDimensions | null;
+      return instrument as IInstrumentDimensions | null;
     } catch (error) {
       console.error(`Error getting dimensions for ${brand} ${model}:`, error);
       return null;
@@ -211,7 +221,7 @@ export class DimensionCacheService {
   /**
    * Store instrument dimensions
    */
-  async storeInstrumentDimensions(instrumentData: InstrumentDimensions): Promise<void> {
+  async storeInstrumentDimensions(instrumentData: IInstrumentDimensions): Promise<void> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -255,9 +265,9 @@ export class DimensionCacheService {
   /**
    * Find compatible cases based on instrument dimensions
    */
-  async findCompatibleCaseDimensions(dimensions: Dimensions, tolerance: number = 0.5): Promise<CompatibleCaseDimensions> {
+  async findCompatibleCaseDimensions(dimensions: IDimensions, tolerance: number = 0.5): Promise<ICompatibleCaseDimensions> {
     // Calculate compatible case dimensions based on instrument dimensions and tolerance
-    const compatibleDimensions: CompatibleCaseDimensions = {
+    const compatibleDimensions: ICompatibleCaseDimensions = {
       minLength: dimensions.length + 0.5,
       maxLength: dimensions.length + 2 + tolerance,
       minWidth: dimensions.width + 0.5,
@@ -273,7 +283,7 @@ export class DimensionCacheService {
   /**
    * Convert dimensions between units (e.g., inches to cm)
    */
-  convertDimensions(dimensions: Dimensions, targetUnit: string): Dimensions {
+  convertDimensions(dimensions: IDimensions, targetUnit: string): IDimensions {
     if (dimensions.unit === targetUnit) {
       return dimensions;
     }

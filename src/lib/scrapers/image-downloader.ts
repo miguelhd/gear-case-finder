@@ -4,18 +4,36 @@ import path from 'path';
 import crypto from 'crypto';
 import * as winston from 'winston';
 
-export interface ImageDownloaderOptions {
+/**
+ * Configuration options for the Image Downloader.
+ */
+export interface IImageDownloaderOptions {
+  /**
+   * Directory for storing downloaded images.
+   */
   imageDirectory?: string;
+  
+  /**
+   * Maximum number of retry attempts for failed downloads.
+   */
   maxRetries?: number;
+  
+  /**
+   * Delay in milliseconds between retry attempts.
+   */
   delayBetweenRetries?: number;
+  
+  /**
+   * Directory for storing log files.
+   */
   logDirectory?: string;
 }
 
 export class ImageDownloader {
   private logger!: winston.Logger;
-  private options: ImageDownloaderOptions;
+  private options: IImageDownloaderOptions;
   
-  constructor(options: ImageDownloaderOptions = {}) {
+  constructor(options: IImageDownloaderOptions = {}) {
     // Determine appropriate image directory based on environment
     const defaultImageDir = process.env.NODE_ENV === 'production' 
       ? '/tmp/images' 
@@ -38,7 +56,7 @@ export class ImageDownloader {
     this.ensureDirectories();
   }
   
-  private setupLogger() {
+  private setupLogger(): void {
     // Ensure log directory exists
     fs.mkdir(this.options.logDirectory || '/tmp/logs', { recursive: true }).catch(err => {
       console.error(`Failed to create log directory: ${err.message}`);
@@ -69,7 +87,7 @@ export class ImageDownloader {
     });
   }
   
-  private async ensureDirectories() {
+  private async ensureDirectories(): Promise<void> {
     try {
       // Ensure image directory exists
       await fs.mkdir(this.options.imageDirectory || './public/images', { recursive: true });
@@ -182,7 +200,7 @@ export class ImageDownloader {
    * @param retries Number of retries remaining
    * @returns Axios response
    */
-  private async fetchWithRetry(url: string, retries = this.options.maxRetries): Promise<any> {
+  private async fetchWithRetry(url: string, retries: number = this.options.maxRetries || 3): Promise<any> {
     try {
       const response = await axios.get(url, { 
         responseType: 'arraybuffer',

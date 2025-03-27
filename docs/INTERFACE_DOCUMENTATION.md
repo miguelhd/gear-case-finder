@@ -1,6 +1,12 @@
-import { Schema, model, Document, models, Model } from 'mongoose';
-import mongoose from 'mongoose';
+# Interface Documentation
 
+## Overview
+This document provides detailed documentation for the key interfaces used in the Gear Case Finder project. These interfaces define the core data structures and API contracts throughout the application.
+
+## Core Data Models
+
+### IAudioGear
+```typescript
 /**
  * Represents an audio gear item with its properties and dimensions.
  * Used for storing and retrieving audio equipment data.
@@ -136,37 +142,10 @@ export interface IAudioGear extends Document {
    */
   updatedAt?: Date;
 }
+```
 
-// Audio Gear schema
-const AudioGearSchema = new Schema({
-  name: { type: String, required: true },
-  brand: { type: String, required: true },
-  category: { type: String, required: true },
-  type: { type: String, required: true },
-  dimensions: {
-    length: { type: Number, required: true },
-    width: { type: Number, required: true },
-    height: { type: Number, required: true },
-    unit: { type: String, required: true }
-  },
-  weight: {
-    value: { type: Number, required: true },
-    unit: { type: String, required: true }
-  },
-  imageUrl: { type: String },
-  productUrl: { type: String },
-  description: { type: String },
-  popularity: { type: Number },
-  releaseYear: { type: Number },
-  discontinued: { type: Boolean, default: false },
-  marketplace: { type: String },
-  price: { type: Number },
-  currency: { type: String },
-  url: { type: String },
-  imageUrls: [{ type: String }],
-  availability: { type: String }
-}, { timestamps: true });
-
+### ICase
+```typescript
 /**
  * Represents a case or container suitable for audio gear.
  * Used for storing and retrieving case data.
@@ -419,75 +398,10 @@ export interface ICase extends Document {
    */
   updatedAt?: Date;
 }
+```
 
-// Case schema
-const CaseSchema = new Schema({
-  name: { type: String, required: true },
-  brand: { type: String, required: true },
-  type: { type: String, required: true },
-  dimensions: {
-    interior: {
-      length: { type: Number, required: true },
-      width: { type: Number, required: true },
-      height: { type: Number, required: true },
-      unit: { type: String, required: true }
-    },
-    exterior: {
-      length: { type: Number },
-      width: { type: Number },
-      height: { type: Number },
-      unit: { type: String }
-    }
-  },
-  // Add internalDimensions to schema to match interface
-  internalDimensions: {
-    length: { type: Number },
-    width: { type: Number },
-    height: { type: Number },
-    unit: { type: String }
-  },
-  externalDimensions: {
-    length: { type: Number },
-    width: { type: Number },
-    height: { type: Number },
-    unit: { type: String }
-  },
-  weight: {
-    value: { type: Number },
-    unit: { type: String }
-  },
-  features: [{ type: String }],
-  price: { type: Number },
-  currency: { type: String },
-  rating: { type: Number },
-  reviewCount: { type: Number },
-  imageUrl: { type: String },
-  productUrl: { type: String },
-  description: { type: String },
-  protectionLevel: { 
-    type: String, 
-    enum: ['low', 'medium', 'high'] 
-  },
-  waterproof: { type: Boolean, default: false },
-  shockproof: { type: Boolean, default: false },
-  hasPadding: { type: Boolean, default: false },
-  hasCompartments: { type: Boolean, default: false },
-  hasHandle: { type: Boolean, default: false },
-  hasWheels: { type: Boolean, default: false },
-  hasLock: { type: Boolean, default: false },
-  material: { type: String },
-  color: { type: String },
-  marketplace: { type: String },
-  url: { type: String },
-  imageUrls: [{ type: String }],
-  availability: { type: String },
-  seller: {
-    name: { type: String },
-    url: { type: String },
-    rating: { type: Number }
-  }
-}, { timestamps: true });
-
+### IGearCaseMatch
+```typescript
 /**
  * Represents a match between an audio gear item and a compatible case.
  * Used for storing and retrieving compatibility matches.
@@ -548,24 +462,320 @@ export interface IGearCaseMatch extends Document {
    */
   updatedAt?: Date;
 }
+```
 
-// Gear-Case Match schema
-const GearCaseMatchSchema = new Schema({
-  gearId: { type: String, required: true },
-  caseId: { type: String, required: true },
-  compatibilityScore: { type: Number, required: true },
-  dimensionScore: { type: Number, required: true },
-  featureScore: { type: Number, required: true },
-  userFeedbackScore: { type: Number, default: 0 },
-  totalFeedback: { type: Number, default: 0 },
-  positiveCount: { type: Number, default: 0 },
-  negativeCount: { type: Number, default: 0 }
-}, { timestamps: true });
+## API Service Interfaces
 
-// Create index for unique gear-case combinations
-GearCaseMatchSchema.index({ gearId: 1, caseId: 1 }, { unique: true });
+### IDimensions
+```typescript
+/**
+ * Represents the physical dimensions of an object.
+ */
+export interface IDimensions {
+  /**
+   * Length of the object in the specified unit.
+   */
+  length: number;
+  
+  /**
+   * Width of the object in the specified unit.
+   */
+  width: number;
+  
+  /**
+   * Height of the object in the specified unit.
+   */
+  height: number;
+  
+  /**
+   * Unit of measurement (e.g., 'in', 'cm', 'mm').
+   */
+  unit: string;
+}
+```
 
-// Create and export models
-export const AudioGear = models.AudioGear || model<IAudioGear>('AudioGear', AudioGearSchema, 'AudioGear');
-export const Case = models.Case || model<ICase>('Case', CaseSchema, 'Case');
-export const GearCaseMatch = models.GearCaseMatch || model<IGearCaseMatch>('GearCaseMatch', GearCaseMatchSchema, 'GearCaseMatch');
+### ICompatibleCaseDimensions
+```typescript
+/**
+ * Represents the dimensional requirements for a compatible case.
+ */
+export interface ICompatibleCaseDimensions {
+  /**
+   * Minimum length required for a compatible case in the specified unit.
+   */
+  minLength: number;
+  
+  /**
+   * Maximum length allowed for a compatible case in the specified unit.
+   */
+  maxLength: number;
+  
+  /**
+   * Minimum width required for a compatible case in the specified unit.
+   */
+  minWidth: number;
+  
+  /**
+   * Maximum width allowed for a compatible case in the specified unit.
+   */
+  maxWidth: number;
+  
+  /**
+   * Minimum height required for a compatible case in the specified unit.
+   */
+  minHeight: number;
+  
+  /**
+   * Maximum height allowed for a compatible case in the specified unit.
+   */
+  maxHeight: number;
+  
+  /**
+   * Unit of measurement (e.g., 'in', 'cm', 'mm').
+   */
+  unit: string;
+}
+```
+
+### IInstrumentDimensions
+```typescript
+/**
+ * Represents the dimensions of a musical instrument or audio gear
+ * along with compatible case requirements.
+ */
+export interface IInstrumentDimensions {
+  /**
+   * Type of instrument (e.g., 'synthesizer', 'audio interface').
+   */
+  instrumentType: string;
+  
+  /**
+   * Brand or manufacturer of the instrument.
+   */
+  brand: string;
+  
+  /**
+   * Model name or number of the instrument.
+   */
+  model: string;
+  
+  /**
+   * Physical dimensions of the instrument.
+   */
+  dimensions: IDimensions;
+  
+  /**
+   * Dimensional requirements for a compatible case.
+   */
+  compatibleCaseDimensions: ICompatibleCaseDimensions;
+  
+  /**
+   * Date when the dimensions were last verified.
+   */
+  lastVerified: Date;
+}
+```
+
+### ICacheOptions
+```typescript
+/**
+ * Options for configuring cache behavior.
+ */
+export interface ICacheOptions {
+  /**
+   * Time to live in seconds. Determines how long the cached item remains valid.
+   */
+  ttl?: number;
+  
+  /**
+   * Cache namespace for grouping related items.
+   */
+  namespace?: string;
+}
+```
+
+### IApiManagerOptions
+```typescript
+/**
+ * Configuration options for the API Manager.
+ */
+export interface IApiManagerOptions {
+  /**
+   * Directory for storing log files.
+   */
+  logDirectory?: string;
+  
+  /**
+   * Directory for storing data files.
+   */
+  dataDirectory?: string;
+  
+  /**
+   * Directory for storing downloaded images.
+   */
+  imageDirectory?: string;
+  
+  /**
+   * Maximum number of retry attempts for failed API calls.
+   */
+  maxRetries?: number;
+  
+  /**
+   * Delay in milliseconds between retry attempts.
+   */
+  delayBetweenRetries?: number;
+  
+  /**
+   * Whether to save API results to the database.
+   */
+  saveToDatabase?: boolean;
+  
+  /**
+   * Whether to download images from API results.
+   */
+  downloadImages?: boolean;
+  
+  /**
+   * MongoDB connection URI.
+   */
+  mongodbUri?: string;
+  
+  /**
+   * API key for the Canopy API.
+   */
+  canopyApiKey?: string;
+  
+  /**
+   * Access token for the Reverb API.
+   */
+  reverbAccessToken?: string;
+  
+  /**
+   * Whether to enable batch processing of API requests.
+   */
+  enableBatchProcessing?: boolean;
+  
+  /**
+   * Whether to enable caching of API responses.
+   */
+  enableCaching?: boolean;
+}
+```
+
+### IImageDownloaderOptions
+```typescript
+/**
+ * Configuration options for the Image Downloader.
+ */
+export interface IImageDownloaderOptions {
+  /**
+   * Directory for storing downloaded images.
+   */
+  imageDirectory?: string;
+  
+  /**
+   * Maximum number of retry attempts for failed downloads.
+   */
+  maxRetries?: number;
+  
+  /**
+   * Delay in milliseconds between retry attempts.
+   */
+  delayBetweenRetries?: number;
+  
+  /**
+   * Directory for storing log files.
+   */
+  logDirectory?: string;
+}
+```
+
+## Usage Examples
+
+### Using the IAudioGear Interface
+```typescript
+import { IAudioGear, AudioGear } from '../models/gear-models';
+
+// Creating a new audio gear item
+const newGear: Partial<IAudioGear> = {
+  name: 'Scarlett 2i2',
+  brand: 'Focusrite',
+  category: 'audio equipment',
+  type: 'audio interface',
+  dimensions: {
+    length: 7.17,
+    width: 3.77,
+    height: 1.89,
+    unit: 'in'
+  },
+  weight: {
+    value: 1.32,
+    unit: 'lbs'
+  },
+  price: 159.99,
+  currency: 'USD',
+  marketplace: 'amazon'
+};
+
+// Saving to database
+const audioGear = new AudioGear(newGear);
+await audioGear.save();
+```
+
+### Using the ICase Interface
+```typescript
+import { ICase, Case } from '../models/gear-models';
+
+// Creating a new case
+const newCase: Partial<ICase> = {
+  name: 'Protective Case for Audio Interfaces',
+  brand: 'Gator',
+  type: 'hard case',
+  dimensions: {
+    interior: {
+      length: 8.5,
+      width: 5.0,
+      height: 2.5,
+      unit: 'in'
+    },
+    exterior: {
+      length: 9.5,
+      width: 6.0,
+      height: 3.0,
+      unit: 'in'
+    }
+  },
+  price: 49.99,
+  currency: 'USD',
+  protectionLevel: 'high',
+  waterproof: true,
+  shockproof: true
+};
+
+// Saving to database
+const caseItem = new Case(newCase);
+await caseItem.save();
+```
+
+### Using the API Cache Service
+```typescript
+import { ApiCacheService } from '../lib/api/api-cache-service';
+
+// Initialize cache service
+const cacheService = new ApiCacheService();
+await cacheService.initialize();
+
+// Cache API response
+await cacheService.set(
+  'canopy_search_audio_gear',
+  { query: 'audio interface', limit: 10 },
+  apiResponseData,
+  { ttl: 3600, namespace: 'audio_gear' }
+);
+
+// Retrieve cached response
+const cachedData = await cacheService.get(
+  'canopy_search_audio_gear',
+  { query: 'audio interface', limit: 10 }
+);
+```

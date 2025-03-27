@@ -8,9 +8,19 @@
 import mongoose from 'mongoose';
 import connectToMongoDB from '../mongodb';
 
-interface CacheOptions {
-  ttl?: number; // Time to live in seconds
-  namespace?: string; // Cache namespace for grouping related items
+/**
+ * Options for configuring cache behavior.
+ */
+export interface ICacheOptions {
+  /**
+   * Time to live in seconds. Determines how long the cached item remains valid.
+   */
+  ttl?: number;
+  
+  /**
+   * Cache namespace for grouping related items.
+   */
+  namespace?: string;
 }
 
 export class ApiCacheService {
@@ -71,11 +81,14 @@ export class ApiCacheService {
 
   /**
    * Generate a cache key from the provided parameters
+   * @param apiName Name of the API being called
+   * @param params Parameters used in the API call
+   * @returns A unique cache key string
    */
-  private generateCacheKey(apiName: string, params: any): string {
+  private generateCacheKey(apiName: string, params: Record<string, unknown>): string {
     const sortedParams = Object.keys(params || {})
       .sort()
-      .reduce((result: any, key) => {
+      .reduce((result: Record<string, unknown>, key) => {
         result[key] = params[key];
         return result;
       }, {});
@@ -85,8 +98,11 @@ export class ApiCacheService {
 
   /**
    * Get an item from the cache
+   * @param apiName Name of the API being called
+   * @param params Parameters used in the API call
+   * @returns Cached data or null if not found
    */
-  async get(apiName: string, params: any): Promise<any> {
+  async get(apiName: string, params: Record<string, unknown>): Promise<unknown> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -116,8 +132,12 @@ export class ApiCacheService {
 
   /**
    * Set an item in the cache
+   * @param apiName Name of the API being called
+   * @param params Parameters used in the API call
+   * @param data Data to cache
+   * @param options Cache configuration options
    */
-  async set(apiName: string, params: any, data: any, options: CacheOptions = {}): Promise<void> {
+  async set(apiName: string, params: Record<string, unknown>, data: unknown, options: ICacheOptions = {}): Promise<void> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -155,8 +175,10 @@ export class ApiCacheService {
 
   /**
    * Delete an item from the cache
+   * @param apiName Name of the API being called
+   * @param params Parameters used in the API call
    */
-  async delete(apiName: string, params: any): Promise<void> {
+  async delete(apiName: string, params: Record<string, unknown>): Promise<void> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -174,6 +196,7 @@ export class ApiCacheService {
 
   /**
    * Clear all items in a namespace
+   * @param namespace Cache namespace to clear
    */
   async clearNamespace(namespace: string): Promise<void> {
     try {
@@ -210,8 +233,14 @@ export class ApiCacheService {
 
   /**
    * Get cache statistics
+   * @returns Statistics about the cache contents
    */
-  async getStats(): Promise<any> {
+  async getStats(): Promise<{
+    totalCount: number;
+    expiredCount: number;
+    activeCount: number;
+    namespaceStats: Array<{ namespace: string; count: number }>;
+  }> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -245,6 +274,8 @@ export class ApiCacheService {
 
   /**
    * Set TTL for different types of data
+   * @param dataType Type of data being cached
+   * @param ttl Time to live in seconds
    */
   setTTLForDataType(dataType: string, ttl: number): void {
     switch (dataType) {
@@ -271,20 +302,25 @@ export class ApiCacheService {
 
   /**
    * Wrap an API call with caching
+   * @param apiName Name of the API being called
+   * @param params Parameters used in the API call
+   * @param apiCallFn Function that makes the actual API call
+   * @param options Cache configuration options
+   * @returns Data from cache or from the API call
    */
-  async cacheApiCall(
+  async cacheApiCall<T>(
     apiName: string, 
-    params: any, 
-    apiCallFn: () => Promise<any>, 
-    options: CacheOptions = {}
-  ): Promise<any> {
+    params: Record<string, unknown>, 
+    apiCallFn: () => Promise<T>, 
+    options: ICacheOptions = {}
+  ): Promise<T> {
     try {
       // Try to get from cache first
       const cachedData = await this.get(apiName, params);
       
       if (cachedData) {
         console.log(`Cache hit for ${apiName}`);
-        return cachedData;
+        return cachedData as T;
       }
       
       // If not in cache, make the API call

@@ -1,6 +1,7 @@
-// Interfaces for scraped product data
-
-export interface ScrapedProduct {
+/**
+ * Represents a scraped product from an online marketplace.
+ */
+export interface IScrapedProduct {
   id: string;
   title: string;
   price: number;
@@ -11,16 +12,11 @@ export interface ScrapedProduct {
   source: string;
 }
 
-export interface ScrapedProductDetails {
-  id: string;
-  title: string;
-  price: number;
-  currency: string;
-  imageUrl: string;
-  productUrl: string;
+/**
+ * Represents detailed information about a scraped product.
+ */
+export interface IScrapedProductDetails extends IScrapedProduct {
   description: string;
   imageUrls: string[];
-  rating?: number;
   reviewCount?: number;
-  source: string;
 }
