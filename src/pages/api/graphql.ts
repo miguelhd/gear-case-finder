@@ -1,4 +1,4 @@
-// Enhanced GraphQL API implementation with robust error handling for database connection issues
+// Update GraphQL API handler to use monitoring middleware
 import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { NextApiRequest, NextApiResponse } from 'next';
@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import { connectToDatabase } from '../../lib/mongodb';
 import { typeDefs } from '../../graphql/schema';
 import { resolvers } from '../../graphql/resolvers';
+import { withMonitoring } from '../../lib/monitoring';
 import cors from 'cors';
 
 // Create a request logger for debugging
@@ -79,7 +80,7 @@ const ensureServerStarted = () => {
 };
 
 // Create handler with enhanced logging and CORS support
-const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   // Log request details for debugging
   const { timestamp, requestId } = logRequest(req);
   
@@ -172,5 +173,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     });
   }
 };
+
+// Wrap the handler with monitoring middleware
+const handler = withMonitoring(baseHandler);
 
 export default handler;
