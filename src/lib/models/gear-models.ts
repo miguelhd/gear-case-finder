@@ -218,6 +218,6 @@ const GearCaseMatchSchema = new Schema({
 GearCaseMatchSchema.index({ gearId: 1, caseId: 1 }, { unique: true });
 
 // Create and export models
-export const AudioGear = models.AudioGear || model<IAudioGear>('AudioGear', AudioGearSchema);
-export const Case = models.Case || model<ICase>('Case', CaseSchema);
-export const GearCaseMatch = models.GearCaseMatch || model<IGearCaseMatch>('GearCaseMatch', GearCaseMatchSchema);
+export const AudioGear = models.AudioGear || model<IAudioGear>('AudioGear', AudioGearSchema, 'AudioGear');
+export const Case = models.Case || model<ICase>('Case', CaseSchema, 'Case');
+export const GearCaseMatch = models.GearCaseMatch || model<IGearCaseMatch>('GearCaseMatch', GearCaseMatchSchema, 'GearCaseMatch');
