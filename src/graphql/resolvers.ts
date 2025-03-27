@@ -1,6 +1,22 @@
-// Enhanced GraphQL resolvers with improved error handling and debugging
+// Enhanced GraphQL resolvers with improved error handling, debugging, and proper TypeScript types
 import mongoose from 'mongoose';
 import { AudioGear, Case, GearCaseMatch } from '../lib/models/gear-models';
+
+// Define interface for GearCaseMatch document from MongoDB
+interface IGearCaseMatchDocument {
+  _id: string;
+  gearId: string;
+  caseId: string;
+  compatibilityScore: number;
+  dimensionScore: number;
+  featureScore: number;
+  userFeedbackScore: number;
+  totalFeedback: number;
+  positiveCount: number;
+  negativeCount: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 // Define GraphQL resolvers
 export const resolvers = {
@@ -452,16 +468,17 @@ export const resolvers = {
         const queryCount = await GearCaseMatch.countDocuments(query);
         console.log(`Query matched ${queryCount} match documents`);
         
+        // Explicitly type the result as IGearCaseMatchDocument[]
         const items = await GearCaseMatch.find(query)
           .sort(sortOptions)
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean() as unknown as IGearCaseMatchDocument[];
         
         console.log(`Retrieved ${items.length} match items`);
         
         // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match) => {
+        const populatedItems = await Promise.all(items.map(async (match: IGearCaseMatchDocument) => {
           try {
             const gear = await AudioGear.findById(match.gearId).lean();
             const caseItem = await Case.findById(match.caseId).lean();
@@ -513,16 +530,17 @@ export const resolvers = {
         const queryCount = await GearCaseMatch.countDocuments({ gearId });
         console.log(`Found ${queryCount} matches for gear ID ${gearId}`);
         
+        // Explicitly type the result as IGearCaseMatchDocument[]
         const items = await GearCaseMatch.find({ gearId })
           .sort({ compatibilityScore: -1 })
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean() as unknown as IGearCaseMatchDocument[];
         
         console.log(`Retrieved ${items.length} matches for gear ID ${gearId}`);
         
         // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match) => {
+        const populatedItems = await Promise.all(items.map(async (match: IGearCaseMatchDocument) => {
           try {
             const gear = await AudioGear.findById(match.gearId).lean();
             const caseItem = await Case.findById(match.caseId).lean();
@@ -574,16 +592,17 @@ export const resolvers = {
         const queryCount = await GearCaseMatch.countDocuments({ caseId });
         console.log(`Found ${queryCount} matches for case ID ${caseId}`);
         
+        // Explicitly type the result as IGearCaseMatchDocument[]
         const items = await GearCaseMatch.find({ caseId })
           .sort({ compatibilityScore: -1 })
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean() as unknown as IGearCaseMatchDocument[];
         
         console.log(`Retrieved ${items.length} matches for case ID ${caseId}`);
         
         // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match) => {
+        const populatedItems = await Promise.all(items.map(async (match: IGearCaseMatchDocument) => {
           try {
             const gear = await AudioGear.findById(match.gearId).lean();
             const caseItem = await Case.findById(match.caseId).lean();
@@ -628,7 +647,8 @@ export const resolvers = {
           }
         }
         
-        const match = await GearCaseMatch.findById(id).lean();
+        // Explicitly type the result as IGearCaseMatchDocument
+        const match = await GearCaseMatch.findById(id).lean() as unknown as IGearCaseMatchDocument | null;
         console.log('Retrieved match:', match ? 'Found' : 'Not found');
         
         if (!match) {
