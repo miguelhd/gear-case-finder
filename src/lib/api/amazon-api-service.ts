@@ -7,8 +7,9 @@
 
 import { AmazonPaapiClient } from './amazon-paapi-client';
 import { processSearchResults } from './amazon-data-mapper';
-import { connectToDatabase } from '../mongodb';
-import { AudioGear, Case } from '../models/gear-models';
+import connectToMongoDB from '../mongodb';
+import { IAudioGear, ICase, AudioGear, Case } from '../models/gear-models';
+import mongoose from 'mongoose';
 
 interface AmazonApiServiceConfig {
   accessKey: string;
@@ -42,7 +43,13 @@ export class AmazonApiService {
 
     try {
       // Connect to MongoDB
-      const { db } = await connectToDatabase();
+      await connectToMongoDB();
+      
+      // Verify connection
+      if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+        throw new Error('MongoDB connection failed or db property is not available');
+      }
+      
       this.mongoConnected = true;
       this.isInitialized = true;
       console.log('Amazon API Service initialized successfully');
@@ -55,7 +62,7 @@ export class AmazonApiService {
   /**
    * Search for audio gear and store results in MongoDB
    */
-  async searchAndStoreAudioGear(keywords: string, itemCount: number = 10): Promise<AudioGear[]> {
+  async searchAndStoreAudioGear(keywords: string, itemCount: number = 10): Promise<IAudioGear[]> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -74,7 +81,7 @@ export class AmazonApiService {
         await this.storeCases(cases);
       }
       
-      return audioGear;
+      return audioGear as unknown as IAudioGear[];
     } catch (error) {
       console.error(`Error searching and storing audio gear with keywords ${keywords}:`, error);
       throw error;
@@ -84,7 +91,7 @@ export class AmazonApiService {
   /**
    * Search for cases and store results in MongoDB
    */
-  async searchAndStoreCases(keywords: string, itemCount: number = 10): Promise<Case[]> {
+  async searchAndStoreCases(keywords: string, itemCount: number = 10): Promise<ICase[]> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -103,7 +110,7 @@ export class AmazonApiService {
         await this.storeCases(cases);
       }
       
-      return cases;
+      return cases as unknown as ICase[];
     } catch (error) {
       console.error(`Error searching and storing cases with keywords ${keywords}:`, error);
       throw error;
@@ -113,14 +120,18 @@ export class AmazonApiService {
   /**
    * Store audio gear in MongoDB
    */
-  private async storeAudioGear(audioGearItems: AudioGear[]): Promise<void> {
+  private async storeAudioGear(audioGearItems: any[]): Promise<void> {
     try {
       if (!this.mongoConnected) {
         throw new Error('MongoDB not connected');
       }
 
-      const { db } = await connectToDatabase();
-      const collection = db.collection('AudioGear');
+      // Ensure we have a valid db connection
+      if (!mongoose.connection.db) {
+        throw new Error('MongoDB db property is not available');
+      }
+      
+      const collection = mongoose.connection.db.collection('AudioGear');
 
       for (const item of audioGearItems) {
         // Check if item already exists
@@ -152,14 +163,18 @@ export class AmazonApiService {
   /**
    * Store cases in MongoDB
    */
-  private async storeCases(caseItems: Case[]): Promise<void> {
+  private async storeCases(caseItems: any[]): Promise<void> {
     try {
       if (!this.mongoConnected) {
         throw new Error('MongoDB not connected');
       }
 
-      const { db } = await connectToDatabase();
-      const collection = db.collection('Case');
+      // Ensure we have a valid db connection
+      if (!mongoose.connection.db) {
+        throw new Error('MongoDB db property is not available');
+      }
+      
+      const collection = mongoose.connection.db.collection('Case');
 
       for (const item of caseItems) {
         // Check if item already exists
@@ -191,7 +206,7 @@ export class AmazonApiService {
   /**
    * Run a full product search for both audio gear and cases
    */
-  async runFullProductSearch(): Promise<{ audioGear: AudioGear[], cases: Case[] }> {
+  async runFullProductSearch(): Promise<{ audioGear: IAudioGear[], cases: ICase[] }> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
@@ -215,8 +230,8 @@ export class AmazonApiService {
         'equipment case'
       ];
 
-      const audioGearResults: AudioGear[] = [];
-      const caseResults: Case[] = [];
+      const audioGearResults: IAudioGear[] = [];
+      const caseResults: ICase[] = [];
 
       // Search for audio gear
       for (const keyword of audioGearKeywords) {

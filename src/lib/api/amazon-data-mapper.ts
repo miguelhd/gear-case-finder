@@ -5,7 +5,7 @@
  * to the internal data models used in the Gear Case Finder application.
  */
 
-import { AudioGear, Case } from '../models/gear-models';
+import { IAudioGear, ICase, AudioGear, Case } from '../models/gear-models';
 
 /**
  * Extract dimensions from Amazon product attributes
@@ -112,7 +112,7 @@ function isLikelyCase(item: any): boolean {
 /**
  * Map Amazon product data to AudioGear model
  */
-export function mapToAudioGear(item: any): AudioGear {
+export function mapToAudioGear(item: any): any {
   try {
     const dimensions = extractDimensions(item);
     const weight = extractWeight(item);
@@ -151,7 +151,7 @@ export function mapToAudioGear(item: any): AudioGear {
     }
     
     // Create AudioGear object
-    const audioGear: AudioGear = {
+    const audioGear: any = {
       name: item.ItemInfo?.Title?.DisplayValue || '',
       brand: item.ItemInfo?.ByLineInfo?.Brand?.DisplayValue || '',
       category: 'keyboard', // Default category
@@ -188,7 +188,7 @@ export function mapToAudioGear(item: any): AudioGear {
 /**
  * Map Amazon product data to Case model
  */
-export function mapToCase(item: any): Case {
+export function mapToCase(item: any): any {
   try {
     const dimensions = extractDimensions(item);
     
@@ -264,7 +264,7 @@ export function mapToCase(item: any): Case {
     }
     
     // Create Case object
-    const caseItem: Case = {
+    const caseItem: any = {
       name: item.ItemInfo?.Title?.DisplayValue || '',
       brand: item.ItemInfo?.ByLineInfo?.Brand?.DisplayValue || '',
       type: 'case', // Default type
@@ -320,10 +320,10 @@ export function mapToCase(item: any): Case {
 /**
  * Process Amazon search results and map to appropriate models
  */
-export function processSearchResults(searchResults: any): { audioGear: AudioGear[], cases: Case[] } {
+export function processSearchResults(searchResults: any): { audioGear: any[], cases: any[] } {
   try {
-    const audioGear: AudioGear[] = [];
-    const cases: Case[] = [];
+    const audioGear: any[] = [];
+    const cases: any[] = [];
     
     if (!searchResults.SearchResult?.Items) {
       return { audioGear, cases };

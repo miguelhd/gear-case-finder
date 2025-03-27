@@ -98,25 +98,29 @@ export class AmazonPaapiClient {
       crypto.createHash('sha256').update(canonicalRequest).digest('hex');
     
     // Calculate signature
+    // Fix TypeScript error by using string as key instead of Buffer
+    const kSecret = 'AWS4' + this.config.secretKey;
+    
+    // Use string keys for all HMAC operations to avoid Buffer type errors
     const kDate = crypto
-      .createHmac('sha256', 'AWS4' + this.config.secretKey)
+      .createHmac('sha256', kSecret)
       .update(dateStamp)
-      .digest();
+      .digest('hex');
     
     const kRegion = crypto
       .createHmac('sha256', kDate)
       .update(this.config.region)
-      .digest();
+      .digest('hex');
     
     const kService = crypto
       .createHmac('sha256', kRegion)
       .update('ProductAdvertisingAPI')
-      .digest();
+      .digest('hex');
     
     const kSigning = crypto
       .createHmac('sha256', kService)
       .update('aws4_request')
-      .digest();
+      .digest('hex');
     
     const signature = crypto
       .createHmac('sha256', kSigning)
