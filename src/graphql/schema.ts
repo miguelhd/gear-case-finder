@@ -29,13 +29,30 @@ export const typeDefs = gql`
     imageUrl: String
     inStock: Boolean
     dimensions: Dimensions
+    internalDimensions: Dimensions
     description: String
     features: [String]
     price: Float
+    currency: String
     rating: Float
     reviews: Int
+    reviewCount: Int
     protectionLevel: String
     compatibleWith: [String]
+    waterproof: Boolean
+    shockproof: Boolean
+    dustproof: Boolean
+    color: String
+    material: String
+    hasHandle: Boolean
+    hasWheels: Boolean
+    seller: Seller
+  }
+
+  type Seller {
+    name: String
+    url: String
+    rating: Float
   }
 
   type GearCaseMatch {
@@ -45,6 +62,7 @@ export const typeDefs = gql`
     gear: AudioGear
     case: Case
     compatibilityScore: Float!
+    matchReason: String
     notes: String
   }
 
@@ -113,6 +131,9 @@ export const typeDefs = gql`
     maxPrice: Float
     minRating: Float
     inStock: Boolean
+    waterproof: Boolean
+    shockproof: Boolean
+    dustproof: Boolean
     sortBy: String
     sortDirection: String
   }
