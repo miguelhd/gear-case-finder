@@ -1,12 +1,14 @@
-// Update GraphQL API handler to use monitoring middleware
+// Update GraphQL API handler to use a direct approach without Apollo Server start()
 import { ApolloServer } from '@apollo/server';
-import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { NextApiRequest, NextApiResponse } from 'next';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '../../lib/mongodb';
 import { typeDefs } from '../../graphql/schema';
 import { resolvers } from '../../graphql/resolvers';
 import { withMonitoring } from '../../lib/monitoring';
+import { GraphQLError } from 'graphql';
+import { parse, validate, execute, specifiedRules } from 'graphql';
+import { makeExecutableSchema } from '@graphql-tools/schema';
 
 // Create a request logger for debugging
 const logRequest = (req: NextApiRequest) => {
@@ -29,26 +31,11 @@ const logRequest = (req: NextApiRequest) => {
   return { timestamp, requestId };
 };
 
-// Create Apollo Server plugin for logging
-const loggingPlugin = {
-  async requestDidStart(requestContext: any) {
-    const { request } = requestContext;
-    const requestId = 'req_' + Math.random().toString(36).substring(2, 15);
-    const timestamp = new Date().toISOString();
-    
-    console.log(`[${timestamp}] [${requestId}] GraphQL operation: ${request.operationName || 'anonymous'}`);
-    
-    return {
-      async didEncounterErrors(ctx: any) {
-        console.error(`[${timestamp}] [${requestId}] GraphQL errors:`, ctx.errors);
-      },
-      async willSendResponse(ctx: any) {
-        const responseTime = Date.now() - new Date(timestamp).getTime();
-        console.log(`[${timestamp}] [${requestId}] Response sent in ${responseTime}ms`);
-      },
-    };
-  },
-};
+// Create an executable schema once
+const executableSchema = makeExecutableSchema({
+  typeDefs,
+  resolvers,
+});
 
 // Create handler with enhanced logging and CORS support
 const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -84,16 +71,14 @@ const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     console.error(`[${timestamp}] [${requestId}] Method ${req.method} not allowed for GraphQL endpoint`);
     res.status(405).json({
-      name: "ApolloError",
-      graphQLErrors: [],
-      protocolErrors: [],
-      clientErrors: [],
-      networkError: {
-        name: "ServerError",
-        response: {},
-        statusCode: 405,
-        result: ""
-      }
+      errors: [
+        {
+          message: `Method ${req.method} not allowed for GraphQL endpoint`,
+          extensions: {
+            code: 'METHOD_NOT_ALLOWED'
+          }
+        }
+      ]
     });
     return;
   }
@@ -113,38 +98,68 @@ const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
       // We don't throw here, allowing the GraphQL API to function even without DB
     }
     
-    // Create a new Apollo Server instance for each request
-    // This avoids the "start() called multiple times" issue in serverless environments
-    console.log(`[${timestamp}] [${requestId}] Creating Apollo Server instance...`);
-    const server = new ApolloServer({
-      typeDefs,
-      resolvers,
-      introspection: true,
-      plugins: [loggingPlugin],
+    // Process the GraphQL request directly without using Apollo Server's start()
+    console.log(`[${timestamp}] [${requestId}] Processing GraphQL request directly...`);
+    
+    // Extract the GraphQL query from the request body
+    const { query, variables, operationName } = req.body;
+    
+    if (!query) {
+      throw new Error('No GraphQL query provided');
+    }
+    
+    // Parse the query
+    const document = parse(query);
+    
+    // Validate the query against the schema
+    const validationErrors = validate(executableSchema, document, specifiedRules);
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ errors: validationErrors });
+    }
+    
+    // Execute the query
+    const result = await execute({
+      schema: executableSchema,
+      document,
+      variableValues: variables,
+      operationName,
+      contextValue: {
+        requestId,
+        timestamp,
+      },
     });
     
-    // Start the server
-    console.log(`[${timestamp}] [${requestId}] Starting Apollo Server...`);
-    await server.start();
-    console.log(`[${timestamp}] [${requestId}] Apollo Server started successfully`);
+    // Log the operation
+    console.log(`[${timestamp}] [${requestId}] GraphQL operation: ${operationName || 'anonymous'}`);
     
-    // Create a handler for this specific request
-    console.log(`[${timestamp}] [${requestId}] Creating Next.js handler...`);
-    const handler = startServerAndCreateNextHandler(server, {
-      context: async () => ({ requestId, timestamp }),
-    });
+    // Return the result
+    const responseTime = Date.now() - new Date(timestamp).getTime();
+    console.log(`[${timestamp}] [${requestId}] Response sent in ${responseTime}ms`);
     
-    // Process the request
-    console.log(`[${timestamp}] [${requestId}] Processing GraphQL request...`);
-    return handler(req, res);
+    // Set cache control header
+    res.setHeader('Cache-Control', 'no-store');
+    
+    // Send the response
+    return res.status(200).json(result);
   } catch (error) {
     console.error(`[${timestamp}] [${requestId}] Error handling request:`, error);
+    
+    // Format the error response
+    const formattedError = error instanceof GraphQLError
+      ? error
+      : new GraphQLError(
+          error instanceof Error ? error.message : String(error),
+          {
+            extensions: {
+              code: 'INTERNAL_SERVER_ERROR',
+              requestId,
+              timestamp
+            }
+          }
+        );
+    
     res.status(500).json({
-      name: "ApolloError",
-      message: "Internal server error",
-      error: error instanceof Error ? error.message : String(error),
-      requestId,
-      timestamp
+      errors: [formattedError]
     });
   }
 };
