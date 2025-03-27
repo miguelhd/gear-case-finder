@@ -7,10 +7,19 @@ import { scraperMetrics, getScraperHealth } from './monitoring'
 import { getCacheStats } from './cache';
 import { mongoose } from './mongodb';
 
+// Determine appropriate log directory based on environment
+const logDir = process.env.NODE_ENV === 'production' 
+  ? '/tmp/logs' 
+  : path.join(process.cwd(), 'logs');
+
 // Create logs directory if it doesn't exist
-const logDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+  } catch (err) {
+    console.error(`Failed to create log directory: ${err}`);
+    // Fallback to console-only logging if directory creation fails
+  }
 }
 
 // Define log format
@@ -21,30 +30,50 @@ const logFormat = format.combine(
   format.json()
 );
 
-// Create the system logger
-const systemLogger = createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: logFormat,
-  defaultMeta: { service: 'system-monitor' },
-  transports: [
-    // Write all logs with level 'error' and below to error.log
-    new transports.File({ 
-      filename: path.join(logDir, 'system-error.log'), 
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Write all logs with level 'info' and below to combined.log
-    new transports.File({ 
-      filename: path.join(logDir, 'system.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-  ],
-});
+// Create the system logger with fallback to console-only if file transports fail
+let systemLogger;
+try {
+  systemLogger = createLogger({
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    format: logFormat,
+    defaultMeta: { service: 'system-monitor' },
+    transports: [
+      // Write all logs with level 'error' and below to error.log
+      new transports.File({ 
+        filename: path.join(logDir, 'system-error.log'), 
+        level: 'error',
+        maxsize: 5242880, // 5MB
+        maxFiles: 5,
+      }),
+      // Write all logs with level 'info' and below to combined.log
+      new transports.File({ 
+        filename: path.join(logDir, 'system.log'),
+        maxsize: 5242880, // 5MB
+        maxFiles: 5,
+      }),
+    ],
+  });
+} catch (err) {
+  // If file transports fail, create console-only logger
+  console.error(`Failed to initialize file logging: ${err}`);
+  systemLogger = createLogger({
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    format: logFormat,
+    defaultMeta: { service: 'system-monitor' },
+    transports: [],
+  });
+}
 
 // If we're not in production, also log to the console
 if (process.env.NODE_ENV !== 'production') {
+  systemLogger.add(new transports.Console({
+    format: format.combine(
+      format.colorize(),
+      format.simple()
+    ),
+  }));
+} else {
+  // In production, always add console transport as a fallback
   systemLogger.add(new transports.Console({
     format: format.combine(
       format.colorize(),
