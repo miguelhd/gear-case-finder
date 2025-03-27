@@ -1,4 +1,4 @@
-// Enhanced GraphQL API implementation with comprehensive debugging and request tracing
+// Enhanced GraphQL API implementation with robust error handling for database connection issues
 import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { NextApiRequest, NextApiResponse } from 'next';
@@ -105,11 +105,18 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     await ensureServerStarted();
     console.log(`[${timestamp}] [${requestId}] Apollo Server is ready`);
     
-    // Connect to database if needed
-    if (!mongoose.connection.readyState) {
-      console.log(`[${timestamp}] [${requestId}] Connecting to database...`);
-      await connectToDatabase();
-      console.log(`[${timestamp}] [${requestId}] Database connection established`);
+    // Connect to database if needed - with enhanced error handling
+    try {
+      if (!mongoose.connection.readyState) {
+        console.log(`[${timestamp}] [${requestId}] Connecting to database...`);
+        await connectToDatabase();
+        console.log(`[${timestamp}] [${requestId}] Database connection established`);
+      }
+    } catch (dbError) {
+      // Log the error but continue processing the request
+      console.error(`[${timestamp}] [${requestId}] Database connection error:`, dbError);
+      console.log(`[${timestamp}] [${requestId}] Continuing without database connection`);
+      // We don't throw here, allowing the GraphQL API to function even without DB
     }
     
     // Set CORS headers for all responses
