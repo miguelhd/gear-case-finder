@@ -2,7 +2,7 @@
 import { ApolloServer } from '@apollo/server';
 import { NextApiRequest, NextApiResponse } from 'next';
 import mongoose from 'mongoose';
-import { connectToDatabase } from '../../lib/mongodb';
+import connectToMongoDB from '../../lib/mongodb';
 import { typeDefs } from '../../graphql/schema';
 import { resolvers } from '../../graphql/resolvers';
 import { withMonitoring } from '../../lib/monitoring';
@@ -88,7 +88,7 @@ const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       if (!mongoose.connection.readyState) {
         console.log(`[${timestamp}] [${requestId}] Connecting to database...`);
-        await connectToDatabase();
+        await connectToMongoDB();
         console.log(`[${timestamp}] [${requestId}] Database connection established`);
       }
     } catch (dbError) {

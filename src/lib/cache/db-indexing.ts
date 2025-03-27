@@ -5,7 +5,7 @@
  * to improve database query performance.
  */
 
-import { mongoose } from '../mongodb';
+import mongoose from '../mongodb';
 import { AudioGear, Case } from '../models/gear-models';
 
 /**

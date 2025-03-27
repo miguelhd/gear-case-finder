@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { connectToDatabase } from '../../lib/mongodb';
+import connectToMongoDB from '../../lib/mongodb';
 import { GearCaseMatch } from '../../lib/models/gear-models';
 import { FeedbackManager } from '../../lib/matching/feedback-manager';
 
@@ -12,7 +12,7 @@ const feedbackManager = new FeedbackManager();
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Connect to the database
-    await connectToDatabase();
+    await connectToMongoDB();
     
     // Route based on HTTP method
     switch (req.method) {

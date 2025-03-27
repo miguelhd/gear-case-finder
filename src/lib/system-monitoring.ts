@@ -5,7 +5,7 @@ import path from 'path';
 import os from 'os';
 import { scraperMetrics, getScraperHealth } from './monitoring'
 import { getCacheStats } from './cache';
-import { mongoose } from './mongodb';
+import mongoose from './mongodb';
 
 // Determine appropriate log directory based on environment
 const logDir = process.env.NODE_ENV === 'production' 
@@ -404,7 +404,8 @@ export function apiMonitoringMiddleware(req: any, res: any, next: Function): voi
     const statusCode = res.statusCode;
     
     // Record API request
-    systemMetrics.updateDatabaseMetrics(mongoose.connection.readyState === 1);
+    const mongooseInstance = mongoose as any;
+    systemMetrics.updateDatabaseMetrics(mongooseInstance.connection?.readyState === 1);
     systemMetrics.recordApiRequest(endpoint, responseTime, statusCode);
     
     // Call the original end method
@@ -415,20 +416,23 @@ export function apiMonitoringMiddleware(req: any, res: any, next: Function): voi
 }
 
 // Database monitoring
-mongoose.connection.on('connected', () => {
-  systemMetrics.updateDatabaseMetrics(true);
-  systemLogger.info('Database connected');
-});
+const mongooseInstance = mongoose as any;
+if (mongooseInstance.connection) {
+  mongooseInstance.connection.on('connected', () => {
+    systemMetrics.updateDatabaseMetrics(true);
+    systemLogger.info('Database connected');
+  });
 
-mongoose.connection.on('disconnected', () => {
-  systemMetrics.updateDatabaseMetrics(false);
-  systemLogger.warn('Database disconnected');
-});
+  mongooseInstance.connection.on('disconnected', () => {
+    systemMetrics.updateDatabaseMetrics(false);
+    systemLogger.warn('Database disconnected');
+  });
 
-mongoose.connection.on('error', (err) => {
-  systemMetrics.updateDatabaseMetrics(false, undefined, true);
-  systemLogger.error('Database connection error', { error: err });
-});
+  mongooseInstance.connection.on('error', (err) => {
+    systemMetrics.updateDatabaseMetrics(false, undefined, true);
+    systemLogger.error('Database connection error', { error: err });
+  });
+}
 
 // Export monitoring system
 export default {

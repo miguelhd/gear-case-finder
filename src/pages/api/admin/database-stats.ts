@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { mongoose } from '../../../lib/mongodb';
+import connectToMongoDB from '../../../lib/mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,8 +7,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Get database stats from MongoDB
-    const db = mongoose.connection.db;
+    // Connect to MongoDB and get database
+    await connectToMongoDB();
+    const mongooseInstance = (await import('mongoose')).default;
+    const db = (mongooseInstance.connection as any).db;
     
     // Get collection stats
     const audiogears = await db.collection('audiogears').countDocuments();

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { clientPromise, mongoose } from '../../lib/mongodb';
+import connectToMongoDB from '../../lib/mongodb';
 import { AudioGear } from '../../lib/models/gear-models';
 import { ProductMatcher } from '../../lib/matching/product-matcher';
 import { FeatureMatcher } from '../../lib/matching/feature-matcher';

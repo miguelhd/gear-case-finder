@@ -20,7 +20,7 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 export async function connectToMongoDB() {
   try {
     // If already connected, return immediately
-    if (mongoose.connection.readyState === 1) {
+    if (mongoose.connection.readyState as number === 1) {
       console.log('MongoDB already connected');
       return;
     }
@@ -29,7 +29,7 @@ export async function connectToMongoDB() {
     if (isConnecting) {
       console.log('MongoDB connection in progress, waiting...');
       await wait(500);
-      if (mongoose.connection.readyState === 1) {
+      if (mongoose.connection.readyState as number === 1) {
         console.log('MongoDB connection completed while waiting');
         return;
       }
@@ -58,7 +58,7 @@ export async function connectToMongoDB() {
     await wait(500);
     
     // Verify connection and db property
-    if (mongoose.connection.readyState !== 1) {
+    if (mongoose.connection.readyState as number !== 1) {
       throw new Error(`MongoDB connection failed, state: ${mongoose.connection.readyState}`);
     }
     
@@ -100,7 +100,7 @@ export async function collectionExists(collectionName) {
     await connectToMongoDB();
     
     // Double-check connection and db property
-    if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+    if ((mongoose.connection.readyState as number) !== 1 || !mongoose.connection.db) {
       console.warn(`Cannot check collection existence: MongoDB not fully connected (state: ${mongoose.connection.readyState}, db: ${!!mongoose.connection.db})`);
       return false;
     }
@@ -111,7 +111,8 @@ export async function collectionExists(collectionName) {
       const collectionNames = collections.map(c => c.name);
       console.log(`Available collections: ${collectionNames.join(', ')}`);
       return collectionNames.includes(collectionName);
-    } catch (listError) {
+    } catch (error) {
+      const listError = error instanceof Error ? error : new Error(String(error));
       console.error(`Error listing collections: ${listError.message}`);
       
       // Fallback: try to get the collection directly
@@ -120,13 +121,15 @@ export async function collectionExists(collectionName) {
         const count = await collection.countDocuments();
         console.log(`Collection ${collectionName} exists with ${count} documents`);
         return true;
-      } catch (collectionError) {
+      } catch (error) {
+        const collectionError = error instanceof Error ? error : new Error(String(error));
         console.error(`Error accessing collection ${collectionName}: ${collectionError.message}`);
         return false;
       }
     }
   } catch (error) {
-    console.error(`Error checking if collection ${collectionName} exists:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error(`Error checking if collection ${collectionName} exists:`, err);
     return false;
   }
 }

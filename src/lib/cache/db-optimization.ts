@@ -5,7 +5,7 @@
  * to improve performance and prevent timeouts.
  */
 
-import { mongoose } from '../mongodb';
+import mongoose from '../mongodb';
 import { AudioGear, Case } from '../models/gear-models';
 import { Document, FilterQuery, Model } from 'mongoose';
 

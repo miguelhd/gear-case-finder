@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { clientPromise, mongoose } from '../../lib/mongodb';
+import connectToMongoDB from '../../lib/mongodb';
 import { Case } from '../../lib/models/gear-models';
 
 /**

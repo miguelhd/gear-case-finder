@@ -1,7 +1,7 @@
 // Search and filtering functionality for the Gear Case Finder application
 import { AudioGear, Case } from './models/gear-models';
 import { withCache } from './cache';
-import { mongoose } from './mongodb';
+import mongoose from './mongodb';
 
 // Interface for search parameters
 export interface SearchParams {
