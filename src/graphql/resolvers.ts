@@ -64,7 +64,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error('Error in allGear resolver:', error);
-        throw new Error(`Failed to fetch gear items: ${error.message}`);
+        throw new Error(`Failed to fetch gear items: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -88,7 +88,7 @@ export const resolvers = {
         return item;
       } catch (error) {
         console.error(`Error in gear resolver for ID ${id}:`, error);
-        throw new Error(`Failed to fetch gear with ID ${id}: ${error.message}`);
+        throw new Error(`Failed to fetch gear with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -204,7 +204,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error('Error in filterGear resolver:', error);
-        throw new Error(`Failed to filter gear items: ${error.message}`);
+        throw new Error(`Failed to filter gear items: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -260,7 +260,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error('Error in allCases resolver:', error);
-        throw new Error(`Failed to fetch case items: ${error.message}`);
+        throw new Error(`Failed to fetch case items: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -284,7 +284,7 @@ export const resolvers = {
         return item;
       } catch (error) {
         console.error(`Error in case resolver for ID ${id}:`, error);
-        throw new Error(`Failed to fetch case with ID ${id}: ${error.message}`);
+        throw new Error(`Failed to fetch case with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -399,7 +399,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error('Error in filterCases resolver:', error);
-        throw new Error(`Failed to filter case items: ${error.message}`);
+        throw new Error(`Failed to filter case items: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -487,7 +487,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error('Error in matches resolver:', error);
-        throw new Error(`Failed to fetch matches: ${error.message}`);
+        throw new Error(`Failed to fetch matches: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -548,7 +548,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error(`Error in matchesForGear resolver for gear ID ${gearId}:`, error);
-        throw new Error(`Failed to fetch matches for gear ID ${gearId}: ${error.message}`);
+        throw new Error(`Failed to fetch matches for gear ID ${gearId}: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -609,7 +609,7 @@ export const resolvers = {
         };
       } catch (error) {
         console.error(`Error in matchesForCase resolver for case ID ${caseId}:`, error);
-        throw new Error(`Failed to fetch matches for case ID ${caseId}: ${error.message}`);
+        throw new Error(`Failed to fetch matches for case ID ${caseId}: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
     
@@ -651,7 +651,7 @@ export const resolvers = {
         }
       } catch (error) {
         console.error(`Error in match resolver for ID ${id}:`, error);
-        throw new Error(`Failed to fetch match with ID ${id}: ${error.message}`);
+        throw new Error(`Failed to fetch match with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }
