@@ -19,6 +19,15 @@ interface IGearCaseMatchDocument {
   updatedAt?: Date;
 }
 
+// Helper function to map MongoDB _id to GraphQL id
+const mapIdField = (doc: any) => {
+  if (!doc) return null;
+  return {
+    ...doc,
+    id: doc._id.toString()
+  };
+};
+
 // Define GraphQL resolvers
 export const resolvers = {
   Query: {
@@ -64,7 +73,8 @@ export const resolvers = {
         const items = await AudioGear.find()
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
         console.log(`Retrieved ${items.length} gear items`);
         
@@ -91,7 +101,8 @@ export const resolvers = {
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
         
-        const item = await AudioGear.findById(id).lean();
+        const item = await AudioGear.findById(id).lean()
+          .then(mapIdField);
         console.log('Retrieved gear item:', item ? 'Found' : 'Not found');
         return item;
       } catch (error) {
@@ -189,7 +200,8 @@ export const resolvers = {
           .sort(sortOptions)
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
         console.log(`Retrieved ${items.length} filtered gear items`);
         
@@ -238,7 +250,8 @@ export const resolvers = {
         const items = await Case.find()
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
         console.log(`Retrieved ${items.length} case items`);
         
@@ -265,7 +278,8 @@ export const resolvers = {
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
         
-        const item = await Case.findById(id).lean();
+        const item = await Case.findById(id).lean()
+          .then(mapIdField);
         console.log('Retrieved case item:', item ? 'Found' : 'Not found');
         return item;
       } catch (error) {
@@ -341,6 +355,18 @@ export const resolvers = {
           query.inStock = filter.inStock;
         }
         
+        if (filter.waterproof !== undefined) {
+          query.waterproof = filter.waterproof;
+        }
+        
+        if (filter.shockproof !== undefined) {
+          query.shockproof = filter.shockproof;
+        }
+        
+        if (filter.dustproof !== undefined) {
+          query.dustproof = filter.dustproof;
+        }
+        
         // Determine sort order
         let sortField = 'name';
         let sortOrder: 1 | -1 = 1;
@@ -363,7 +389,8 @@ export const resolvers = {
           .sort(sortOptions)
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
         console.log(`Retrieved ${items.length} filtered case items`);
         
@@ -436,15 +463,16 @@ export const resolvers = {
           .sort(sortOptions)
           .skip(skip)
           .limit(limit)
-          .lean() as unknown as IGearCaseMatchDocument[];
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
         console.log(`Retrieved ${items.length} match items`);
         
         // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match: IGearCaseMatchDocument) => {
+        const populatedItems = await Promise.all(items.map(async (match) => {
           try {
-            const gear = await AudioGear.findById(match.gearId).lean();
-            const caseItem = await Case.findById(match.caseId).lean();
+            const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
+            const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
             return {
               ...match,
               gear,
@@ -474,7 +502,7 @@ export const resolvers = {
     // Get matches for specific gear
     matchesForGear: async (_, { gearId, pagination = { page: 1, limit: 10 } }) => {
       try {
-        console.log(`Executing matchesForGear query for gear ID: ${gearId}`);
+        console.log(`Executing matchesForGear query for gear ID: ${gearId} with pagination:`, pagination);
         
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
@@ -489,24 +517,28 @@ export const resolvers = {
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Use find instead of aggregate for simpler debugging
-        const queryCount = await GearCaseMatch.countDocuments({ gearId });
-        console.log(`Found ${queryCount} matches for gear ID ${gearId}`);
+        // Query for matches with the specified gear ID
+        const query = { gearId };
         
-        // Explicitly type the result as IGearCaseMatchDocument[]
-        const items = await GearCaseMatch.find({ gearId })
+        // Use countDocuments for accurate count
+        const queryCount = await GearCaseMatch.countDocuments(query);
+        console.log(`Query matched ${queryCount} match documents for gear ID ${gearId}`);
+        
+        // Sort by compatibility score (highest first)
+        const items = await GearCaseMatch.find(query)
           .sort({ compatibilityScore: -1 })
           .skip(skip)
           .limit(limit)
-          .lean() as unknown as IGearCaseMatchDocument[];
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
-        console.log(`Retrieved ${items.length} matches for gear ID ${gearId}`);
+        console.log(`Retrieved ${items.length} match items for gear ID ${gearId}`);
         
         // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match: IGearCaseMatchDocument) => {
+        const populatedItems = await Promise.all(items.map(async (match) => {
           try {
-            const gear = await AudioGear.findById(match.gearId).lean();
-            const caseItem = await Case.findById(match.caseId).lean();
+            const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
+            const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
             return {
               ...match,
               gear,
@@ -536,7 +568,7 @@ export const resolvers = {
     // Get matches for specific case
     matchesForCase: async (_, { caseId, pagination = { page: 1, limit: 10 } }) => {
       try {
-        console.log(`Executing matchesForCase query for case ID: ${caseId}`);
+        console.log(`Executing matchesForCase query for case ID: ${caseId} with pagination:`, pagination);
         
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
@@ -551,24 +583,28 @@ export const resolvers = {
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Use find instead of aggregate for simpler debugging
-        const queryCount = await GearCaseMatch.countDocuments({ caseId });
-        console.log(`Found ${queryCount} matches for case ID ${caseId}`);
+        // Query for matches with the specified case ID
+        const query = { caseId };
         
-        // Explicitly type the result as IGearCaseMatchDocument[]
-        const items = await GearCaseMatch.find({ caseId })
+        // Use countDocuments for accurate count
+        const queryCount = await GearCaseMatch.countDocuments(query);
+        console.log(`Query matched ${queryCount} match documents for case ID ${caseId}`);
+        
+        // Sort by compatibility score (highest first)
+        const items = await GearCaseMatch.find(query)
           .sort({ compatibilityScore: -1 })
           .skip(skip)
           .limit(limit)
-          .lean() as unknown as IGearCaseMatchDocument[];
+          .lean()
+          .then(docs => docs.map(mapIdField));
         
-        console.log(`Retrieved ${items.length} matches for case ID ${caseId}`);
+        console.log(`Retrieved ${items.length} match items for case ID ${caseId}`);
         
         // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match: IGearCaseMatchDocument) => {
+        const populatedItems = await Promise.all(items.map(async (match) => {
           try {
-            const gear = await AudioGear.findById(match.gearId).lean();
-            const caseItem = await Case.findById(match.caseId).lean();
+            const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
+            const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
             return {
               ...match,
               gear,
@@ -610,18 +646,20 @@ export const resolvers = {
           return null;
         }
         
-        // Explicitly type the result as IGearCaseMatchDocument
-        const match = await GearCaseMatch.findById(id).lean() as unknown as IGearCaseMatchDocument | null;
-        console.log('Retrieved match:', match ? 'Found' : 'Not found');
+        // Find the match by ID
+        const match = await GearCaseMatch.findById(id).lean().then(mapIdField);
         
         if (!match) {
+          console.warn(`Match with ID ${id} not found`);
           return null;
         }
         
+        console.log(`Retrieved match with ID ${id}`);
+        
         // Populate gear and case data
         try {
-          const gear = await AudioGear.findById(match.gearId).lean();
-          const caseItem = await Case.findById(match.caseId).lean();
+          const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
+          const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
           
           return {
             ...match,
