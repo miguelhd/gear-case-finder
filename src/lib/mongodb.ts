@@ -1,4 +1,4 @@
-// Enhanced MongoDB connection module with better error handling and diagnostics
+// Enhanced MongoDB connection module with better error handling, diagnostics, and debugging
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import mongoose from 'mongoose';
 
@@ -36,6 +36,27 @@ const handleConnectionError = (error: any) => {
   return error;
 };
 
+// Initialize MongoDB connection monitoring
+console.log('Initializing MongoDB connection monitoring...');
+mongoose.connection.on('connected', () => {
+  console.log('Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('Mongoose disconnected from MongoDB');
+});
+
+// Log when models are compiled
+mongoose.connection.on('model', (modelName) => {
+  console.log(`Mongoose model compiled: ${modelName}`);
+});
+
+console.log('MongoDB connection monitoring initialized');
+
 if (process.env.NODE_ENV === 'development') {
   // In development mode, use a global variable so that the value
   // is preserved across module reloads caused by HMR (Hot Module Replacement).
@@ -62,6 +83,15 @@ if (process.env.NODE_ENV === 'development') {
   if (!globalWithMongo._mongooseConnection) {
     globalWithMongo._mongooseConnection = mongoose;
     mongoose.connect(uri)
+      .then(() => {
+        console.log('Mongoose connected successfully in development mode');
+        console.log('Database name:', mongoose.connection.db.databaseName);
+        // List collections to verify database access
+        return mongoose.connection.db.listCollections().toArray();
+      })
+      .then(collections => {
+        console.log('Available collections:', collections.map(c => c.name).join(', '));
+      })
       .catch(handleConnectionError);
   }
   
@@ -81,6 +111,15 @@ if (process.env.NODE_ENV === 'development') {
   
   mongooseConnection = mongoose;
   mongoose.connect(uri)
+    .then(() => {
+      console.log('Mongoose connected successfully in production mode');
+      console.log('Database name:', mongoose.connection.db.databaseName);
+      // List collections to verify database access
+      return mongoose.connection.db.listCollections().toArray();
+    })
+    .then(collections => {
+      console.log('Available collections:', collections.map(c => c.name).join(', '));
+    })
     .catch(handleConnectionError);
 }
 
@@ -91,11 +130,41 @@ export { clientPromise, mongooseConnection as mongoose };
 export async function connectToDatabase() {
   try {
     if (mongoose.connection.readyState !== 1) {
+      console.log('Connecting to MongoDB database...');
       await mongoose.connect(uri);
       console.log('MongoDB connection established successfully');
+      console.log('Connection state:', mongoose.connection.readyState);
+      console.log('Database name:', mongoose.connection.db.databaseName);
+      
+      // List collections to verify database access
+      const collections = await mongoose.connection.db.listCollections().toArray();
+      console.log('Available collections:', collections.map(c => c.name).join(', '));
+      
+      // Check if our required collections exist
+      const requiredCollections = ['audiogears', 'cases', 'gearcasematches'];
+      const missingCollections = requiredCollections.filter(
+        name => !collections.some(c => c.name.toLowerCase() === name.toLowerCase())
+      );
+      
+      if (missingCollections.length > 0) {
+        console.warn('Warning: Missing required collections:', missingCollections.join(', '));
+      } else {
+        console.log('All required collections are present');
+        
+        // Count documents in each collection to verify data
+        for (const collName of requiredCollections) {
+          const count = await mongoose.connection.db.collection(collName).countDocuments();
+          console.log(`Collection ${collName} has ${count} documents`);
+        }
+      }
+    } else {
+      console.log('MongoDB already connected');
+      console.log('Connection state:', mongoose.connection.readyState);
+      console.log('Database name:', mongoose.connection.db.databaseName);
     }
     return { client, mongoose };
   } catch (error) {
+    console.error('Error connecting to database:', error);
     handleConnectionError(error);
     // Return the client and mongoose anyway, so the application can continue
     // This prevents the API from crashing even if the database is unavailable
