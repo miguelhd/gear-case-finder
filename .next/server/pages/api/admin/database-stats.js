@@ -5,13 +5,6 @@ exports.id = 155;
 exports.ids = [155];
 exports.modules = {
 
-/***/ 8013:
-/***/ ((module) => {
-
-module.exports = require("mongodb");
-
-/***/ }),
-
 /***/ 1185:
 /***/ ((module) => {
 
@@ -35,8 +28,10 @@ async function handler(req, res) {
         });
     }
     try {
-        // Get database stats from MongoDB
-        const db = _lib_mongodb__WEBPACK_IMPORTED_MODULE_0__/* .mongoose */ .TE.connection.db;
+        // Connect to MongoDB and get database
+        await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_0__/* ["default"] */ .ZP)();
+        const mongooseInstance = (await Promise.resolve(/* import() */).then(__webpack_require__.t.bind(__webpack_require__, 1185, 23))).default;
+        const db = mongooseInstance.connection.db;
         // Get collection stats
         const audiogears = await db.collection("audiogears").countDocuments();
         const cases = await db.collection("cases").countDocuments();

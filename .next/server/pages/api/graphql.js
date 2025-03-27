@@ -5,6 +5,13 @@ exports.id = 702;
 exports.ids = [702];
 exports.modules = {
 
+/***/ 7343:
+/***/ ((module) => {
+
+module.exports = require("graphql");
+
+/***/ }),
+
 /***/ 8013:
 /***/ ((module) => {
 
@@ -19,131 +26,785 @@ module.exports = require("mongoose");
 
 /***/ }),
 
-/***/ 4434:
+/***/ 6550:
+/***/ ((module) => {
+
+module.exports = import("@graphql-tools/schema");;
+
+/***/ }),
+
+/***/ 7147:
+/***/ ((module) => {
+
+module.exports = require("fs");
+
+/***/ }),
+
+/***/ 1017:
+/***/ ((module) => {
+
+module.exports = require("path");
+
+/***/ }),
+
+/***/ 5906:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
-// ESM COMPAT FLAG
-__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   s: () => (/* binding */ resolvers)
+/* harmony export */ });
+/* harmony import */ var mongoose__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1185);
+/* harmony import */ var mongoose__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(mongoose__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(6338);
+/* harmony import */ var _lib_mongodb__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(8377);
+// Enhanced GraphQL resolvers with improved MongoDB connection handling
+
+
+
+// Helper function to map MongoDB _id to GraphQL id
+const mapIdField = (doc)=>{
+    if (!doc) return null;
+    return {
+        ...doc,
+        id: doc._id.toString()
+    };
+};
+// Define GraphQL resolvers
+const resolvers = {
+    Query: {
+        // Simple query to check if the API is working
+        apiStatus: async ()=>{
+            console.log("API status check - MongoDB connection state:", (mongoose__WEBPACK_IMPORTED_MODULE_0___default().connection).readyState);
+            try {
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                return "API is operational and database is connected";
+            } catch (error) {
+                console.error("API status check - Database connection error:", error);
+                return "API is operational but database connection failed";
+            }
+        },
+        // Get all gear with pagination
+        allGear: async (_, { pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log("Executing allGear query with pagination:", pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const count = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.countDocuments();
+                console.log(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name} collection has ${count} documents`);
+                if (count === 0) {
+                    console.warn(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name} collection is empty`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Use find instead of aggregate for simpler debugging
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.find().skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} gear items`);
+                return {
+                    items,
+                    pagination: {
+                        total: count,
+                        page,
+                        limit,
+                        pages: Math.ceil(count / limit)
+                    }
+                };
+            } catch (error) {
+                console.error("Error in allGear resolver:", error);
+                throw new Error(`Failed to fetch gear items: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get gear by ID
+        gear: async (_, { id })=>{
+            try {
+                console.log(`Executing gear query for ID: ${id}`);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                const item = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.findById(id).lean().then(mapIdField);
+                console.log("Retrieved gear item:", item ? "Found" : "Not found");
+                return item;
+            } catch (error) {
+                console.error(`Error in gear resolver for ID ${id}:`, error);
+                throw new Error(`Failed to fetch gear with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Filter gear with pagination
+        filterGear: async (_, { filter, pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log("Executing filterGear query with filter:", filter, "and pagination:", pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const count = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.countDocuments();
+                console.log(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name} collection has ${count} documents`);
+                if (count === 0) {
+                    console.warn(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.collection.name} collection is empty`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Build query based on filter
+                const query = {};
+                if (filter.search) {
+                    query.$or = [
+                        {
+                            name: {
+                                $regex: filter.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            brand: {
+                                $regex: filter.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            description: {
+                                $regex: filter.search,
+                                $options: "i"
+                            }
+                        }
+                    ];
+                }
+                if (filter.categories && filter.categories.length > 0) {
+                    query.category = {
+                        $in: filter.categories
+                    };
+                }
+                if (filter.brands && filter.brands.length > 0) {
+                    query.brand = {
+                        $in: filter.brands
+                    };
+                }
+                if (filter.types && filter.types.length > 0) {
+                    query.type = {
+                        $in: filter.types
+                    };
+                }
+                if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
+                    query.price = {};
+                    if (filter.minPrice !== undefined) {
+                        query.price.$gte = filter.minPrice;
+                    }
+                    if (filter.maxPrice !== undefined) {
+                        query.price.$lte = filter.maxPrice;
+                    }
+                }
+                if (filter.minRating !== undefined) {
+                    query.rating = {
+                        $gte: filter.minRating
+                    };
+                }
+                if (filter.inStock !== undefined) {
+                    query.inStock = filter.inStock;
+                }
+                // Determine sort order
+                let sortField = "name";
+                let sortOrder = 1;
+                if (filter.sortBy) {
+                    sortField = filter.sortBy;
+                    sortOrder = filter.sortDirection === "desc" ? -1 : 1;
+                }
+                const sortOptions = {};
+                sortOptions[sortField] = sortOrder;
+                console.log("Executing query with filter:", query);
+                // Use find instead of aggregate for simpler debugging
+                const queryCount = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.countDocuments(query);
+                console.log(`Query matched ${queryCount} documents`);
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.find(query).sort(sortOptions).skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} filtered gear items`);
+                return {
+                    items,
+                    pagination: {
+                        total: queryCount,
+                        page,
+                        limit,
+                        pages: Math.ceil(queryCount / limit)
+                    }
+                };
+            } catch (error) {
+                console.error("Error in filterGear resolver:", error);
+                throw new Error(`Failed to filter gear items: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get all cases with pagination
+        allCases: async (_, { pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log("Executing allCases query with pagination:", pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const count = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.countDocuments();
+                console.log(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name} collection has ${count} documents`);
+                if (count === 0) {
+                    console.warn(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name} collection is empty`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Use find instead of aggregate for simpler debugging
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.find().skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} case items`);
+                return {
+                    items,
+                    pagination: {
+                        total: count,
+                        page,
+                        limit,
+                        pages: Math.ceil(count / limit)
+                    }
+                };
+            } catch (error) {
+                console.error("Error in allCases resolver:", error);
+                throw new Error(`Failed to fetch case items: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get case by ID
+        case: async (_, { id })=>{
+            try {
+                console.log(`Executing case query for ID: ${id}`);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                const item = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.findById(id).lean().then(mapIdField);
+                console.log("Retrieved case item:", item ? "Found" : "Not found");
+                return item;
+            } catch (error) {
+                console.error(`Error in case resolver for ID ${id}:`, error);
+                throw new Error(`Failed to fetch case with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Filter cases with pagination
+        filterCases: async (_, { filter, pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log("Executing filterCases query with filter:", filter, "and pagination:", pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const count = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.countDocuments();
+                console.log(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name} collection has ${count} documents`);
+                if (count === 0) {
+                    console.warn(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.collection.name} collection is empty`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Build query based on filter
+                const query = {};
+                if (filter.search) {
+                    query.$or = [
+                        {
+                            name: {
+                                $regex: filter.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            brand: {
+                                $regex: filter.search,
+                                $options: "i"
+                            }
+                        },
+                        {
+                            description: {
+                                $regex: filter.search,
+                                $options: "i"
+                            }
+                        }
+                    ];
+                }
+                if (filter.brands && filter.brands.length > 0) {
+                    query.brand = {
+                        $in: filter.brands
+                    };
+                }
+                if (filter.types && filter.types.length > 0) {
+                    query.type = {
+                        $in: filter.types
+                    };
+                }
+                if (filter.protectionLevels && filter.protectionLevels.length > 0) {
+                    query.protectionLevel = {
+                        $in: filter.protectionLevels
+                    };
+                }
+                if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
+                    query.price = {};
+                    if (filter.minPrice !== undefined) {
+                        query.price.$gte = filter.minPrice;
+                    }
+                    if (filter.maxPrice !== undefined) {
+                        query.price.$lte = filter.maxPrice;
+                    }
+                }
+                if (filter.minRating !== undefined) {
+                    query.rating = {
+                        $gte: filter.minRating
+                    };
+                }
+                if (filter.inStock !== undefined) {
+                    query.inStock = filter.inStock;
+                }
+                if (filter.waterproof !== undefined) {
+                    query.waterproof = filter.waterproof;
+                }
+                if (filter.shockproof !== undefined) {
+                    query.shockproof = filter.shockproof;
+                }
+                if (filter.dustproof !== undefined) {
+                    query.dustproof = filter.dustproof;
+                }
+                // Determine sort order
+                let sortField = "name";
+                let sortOrder = 1;
+                if (filter.sortBy) {
+                    sortField = filter.sortBy;
+                    sortOrder = filter.sortDirection === "desc" ? -1 : 1;
+                }
+                const sortOptions = {};
+                sortOptions[sortField] = sortOrder;
+                console.log("Executing query with filter:", query);
+                // Use find instead of aggregate for simpler debugging
+                const queryCount = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.countDocuments(query);
+                console.log(`Query matched ${queryCount} documents`);
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.find(query).sort(sortOptions).skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} filtered case items`);
+                return {
+                    items,
+                    pagination: {
+                        total: queryCount,
+                        page,
+                        limit,
+                        pages: Math.ceil(queryCount / limit)
+                    }
+                };
+            } catch (error) {
+                console.error("Error in filterCases resolver:", error);
+                throw new Error(`Failed to filter case items: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get matches between gear and cases
+        matches: async (_, { filter, pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log("Executing matches query with filter:", filter, "and pagination:", pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Build query based on filter
+                const query = {};
+                if (filter.gearId) {
+                    query.gearId = filter.gearId;
+                }
+                if (filter.caseId) {
+                    query.caseId = filter.caseId;
+                }
+                if (filter.minScore !== undefined) {
+                    query.compatibilityScore = {
+                        $gte: filter.minScore
+                    };
+                }
+                // Determine sort order
+                let sortField = "compatibilityScore";
+                let sortOrder = -1; // Default to highest score first
+                if (filter.sortBy) {
+                    sortField = filter.sortBy;
+                    sortOrder = filter.sortDirection === "desc" ? -1 : 1;
+                }
+                const sortOptions = {};
+                sortOptions[sortField] = sortOrder;
+                // Use find instead of aggregate for simpler debugging
+                const queryCount = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.countDocuments(query);
+                console.log(`Query matched ${queryCount} match documents`);
+                // Explicitly type the result as IGearCaseMatchDocument[]
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.find(query).sort(sortOptions).skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} match items`);
+                // Populate gear and case data
+                const populatedItems = await Promise.all(items.map(async (match)=>{
+                    try {
+                        const gear = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.findById(match.gearId).lean().then(mapIdField);
+                        const caseItem = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.findById(match.caseId).lean().then(mapIdField);
+                        return {
+                            ...match,
+                            gear,
+                            case: caseItem
+                        };
+                    } catch (err) {
+                        console.error(`Error populating match data for match ID ${match._id}:`, err);
+                        return match;
+                    }
+                }));
+                return {
+                    items: populatedItems,
+                    pagination: {
+                        total: queryCount,
+                        page,
+                        limit,
+                        pages: Math.ceil(queryCount / limit)
+                    }
+                };
+            } catch (error) {
+                console.error("Error in matches resolver:", error);
+                throw new Error(`Failed to fetch matches: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get matches for specific gear
+        matchesForGear: async (_, { gearId, pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log(`Executing matchesForGear query for gear ID: ${gearId} with pagination:`, pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Query for matches with the specified gear ID
+                const query = {
+                    gearId
+                };
+                // Use countDocuments for accurate count
+                const queryCount = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.countDocuments(query);
+                console.log(`Query matched ${queryCount} match documents for gear ID ${gearId}`);
+                // Sort by compatibility score (highest first)
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.find(query).sort({
+                    compatibilityScore: -1
+                }).skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} match items for gear ID ${gearId}`);
+                // Populate gear and case data
+                const populatedItems = await Promise.all(items.map(async (match)=>{
+                    try {
+                        const gear = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.findById(match.gearId).lean().then(mapIdField);
+                        const caseItem = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.findById(match.caseId).lean().then(mapIdField);
+                        return {
+                            ...match,
+                            gear,
+                            case: caseItem
+                        };
+                    } catch (err) {
+                        console.error(`Error populating match data for match ID ${match._id}:`, err);
+                        return match;
+                    }
+                }));
+                return {
+                    items: populatedItems,
+                    pagination: {
+                        total: queryCount,
+                        page,
+                        limit,
+                        pages: Math.ceil(queryCount / limit)
+                    }
+                };
+            } catch (error) {
+                console.error(`Error in matchesForGear resolver for gear ID ${gearId}:`, error);
+                throw new Error(`Failed to fetch matches for gear ID ${gearId}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get matches for specific case
+        matchesForCase: async (_, { caseId, pagination = {
+            page: 1,
+            limit: 10
+        } })=>{
+            try {
+                console.log(`Executing matchesForCase query for case ID: ${caseId} with pagination:`, pagination);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name} collection does not exist in the database`);
+                    return {
+                        items: [],
+                        pagination: {
+                            total: 0,
+                            page: pagination.page,
+                            limit: pagination.limit,
+                            pages: 0
+                        }
+                    };
+                }
+                const { page = 1, limit = 10 } = pagination;
+                const skip = (page - 1) * limit;
+                // Query for matches with the specified case ID
+                const query = {
+                    caseId
+                };
+                // Use countDocuments for accurate count
+                const queryCount = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.countDocuments(query);
+                console.log(`Query matched ${queryCount} match documents for case ID ${caseId}`);
+                // Sort by compatibility score (highest first)
+                const items = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.find(query).sort({
+                    compatibilityScore: -1
+                }).skip(skip).limit(limit).lean().then((docs)=>docs.map(mapIdField));
+                console.log(`Retrieved ${items.length} match items for case ID ${caseId}`);
+                // Populate gear and case data
+                const populatedItems = await Promise.all(items.map(async (match)=>{
+                    try {
+                        const gear = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.findById(match.gearId).lean().then(mapIdField);
+                        const caseItem = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.findById(match.caseId).lean().then(mapIdField);
+                        return {
+                            ...match,
+                            gear,
+                            case: caseItem
+                        };
+                    } catch (err) {
+                        console.error(`Error populating match data for match ID ${match._id}:`, err);
+                        return match;
+                    }
+                }));
+                return {
+                    items: populatedItems,
+                    pagination: {
+                        total: queryCount,
+                        page,
+                        limit,
+                        pages: Math.ceil(queryCount / limit)
+                    }
+                };
+            } catch (error) {
+                console.error(`Error in matchesForCase resolver for case ID ${caseId}:`, error);
+                throw new Error(`Failed to fetch matches for case ID ${caseId}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        },
+        // Get a specific match
+        match: async (_, { id })=>{
+            try {
+                console.log(`Executing match query for ID: ${id}`);
+                // Ensure MongoDB is connected with enhanced connection handling
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .connectToMongoDB */ .No)();
+                // Check if collection exists using the safe method
+                const exists = await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_2__/* .collectionExists */ .hv)(_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name);
+                if (!exists) {
+                    console.error(`${_lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.collection.name} collection does not exist in the database`);
+                    return null;
+                }
+                // Find the match by ID
+                const match = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .GearCaseMatch */ .aX.findById(id).lean().then(mapIdField);
+                if (!match) {
+                    console.warn(`Match with ID ${id} not found`);
+                    return null;
+                }
+                console.log(`Retrieved match with ID ${id}`);
+                // Populate gear and case data
+                try {
+                    const gear = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .AudioGear */ .a1.findById(match.gearId).lean().then(mapIdField);
+                    const caseItem = await _lib_models_gear_models__WEBPACK_IMPORTED_MODULE_1__/* .Case */ .JZ.findById(match.caseId).lean().then(mapIdField);
+                    return {
+                        ...match,
+                        gear,
+                        case: caseItem
+                    };
+                } catch (err) {
+                    console.error(`Error populating match data for match ID ${id}:`, err);
+                    return match;
+                }
+            } catch (error) {
+                console.error(`Error in match resolver for ID ${id}:`, error);
+                throw new Error(`Failed to fetch match with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    }
+};
+
+
+/***/ }),
+
+/***/ 9895:
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
 
 // EXPORTS
 __webpack_require__.d(__webpack_exports__, {
-  "default": () => (/* binding */ graphql)
+  U: () => (/* binding */ typeDefs)
 });
 
 ;// CONCATENATED MODULE: external "graphql-tag"
 const external_graphql_tag_namespaceObject = require("graphql-tag");
-// EXTERNAL MODULE: ./src/lib/mongodb.ts
-var mongodb = __webpack_require__(8377);
-// EXTERNAL MODULE: ./src/lib/models/gear-models.ts
-var gear_models = __webpack_require__(6338);
-// EXTERNAL MODULE: ./src/lib/matching/product-matcher.ts
-var product_matcher = __webpack_require__(2755);
-// EXTERNAL MODULE: ./src/lib/matching/recommendation-engine.ts
-var recommendation_engine = __webpack_require__(8788);
-// EXTERNAL MODULE: ./src/lib/matching/feedback-manager.ts
-var feedback_manager = __webpack_require__(4985);
-;// CONCATENATED MODULE: external "apollo-server-micro"
-const external_apollo_server_micro_namespaceObject = require("apollo-server-micro");
-;// CONCATENATED MODULE: external "apollo-server-core"
-const external_apollo_server_core_namespaceObject = require("apollo-server-core");
-;// CONCATENATED MODULE: ./src/pages/api/graphql.ts
- // Changed from @apollo/server
+;// CONCATENATED MODULE: ./src/graphql/schema.ts
 
-
-
-
-
-
-
-// Initialize services
-const productMatcher = new product_matcher/* ProductMatcher */.o();
-const recommendationEngine = new recommendation_engine/* RecommendationEngine */.$();
-const feedbackManager = new feedback_manager/* FeedbackManager */.B();
 // Define GraphQL schema
 const typeDefs = external_graphql_tag_namespaceObject.gql`
-  # Dimensions type
-  type Dimensions {
-    length: Float
-    width: Float
-    height: Float
-    unit: String
+  # Types
+  type AudioGear {
+    id: ID!
+    name: String!
+    brand: String
+    category: String
+    type: String
+    imageUrl: String
+    popularity: Int
+    inStock: Boolean
+    releaseYear: Int
+    dimensions: Dimensions
+    description: String
+    features: [String]
+    price: Float
+    rating: Float
+    reviews: Int
   }
 
-  # Weight type
-  type Weight {
-    value: Float
-    unit: String
+  type Case {
+    id: ID!
+    name: String!
+    brand: String
+    type: String
+    imageUrl: String
+    inStock: Boolean
+    dimensions: Dimensions
+    internalDimensions: Dimensions
+    description: String
+    features: [String]
+    price: Float
+    currency: String
+    rating: Float
+    reviews: Int
+    reviewCount: Int
+    protectionLevel: String
+    compatibleWith: [String]
+    waterproof: Boolean
+    shockproof: Boolean
+    dustproof: Boolean
+    color: String
+    material: String
+    hasHandle: Boolean
+    hasWheels: Boolean
+    seller: Seller
   }
 
-  # Seller type
   type Seller {
     name: String
     url: String
     rating: Float
   }
 
-  # Audio Gear type
-  type AudioGear {
-    id: ID!
-    name: String!
-    brand: String!
-    category: String!
-    type: String!
-    dimensions: Dimensions!
-    weight: Weight
-    imageUrl: String
-    productUrl: String
-    description: String
-    price: Float
-    currency: String
-    inStock: Boolean
-    rating: Float
-    reviewCount: Int
-    features: [String]
-    compatibleWith: [String]
-    seller: Seller
-    createdAt: String
-    updatedAt: String
-  }
-
-  # Case type
-  type Case {
-    id: ID!
-    name: String!
-    brand: String
-    type: String!
-    internalDimensions: Dimensions!
-    externalDimensions: Dimensions
-    weight: Weight
-    imageUrl: String
-    productUrl: String
-    description: String
-    price: Float
-    currency: String
-    inStock: Boolean
-    rating: Float
-    reviewCount: Int
-    features: [String]
-    protectionLevel: String
-    waterproof: Boolean
-    shockproof: Boolean
-    dustproof: Boolean
-    color: String
-    material: String
-    seller: Seller
-    createdAt: String
-    updatedAt: String
-  }
-
-  # Dimension fit type
-  type DimensionFit {
-    length: Float
-    width: Float
-    height: Float
-    overall: Float
-  }
-
-  # Gear-Case match type
   type GearCaseMatch {
     id: ID!
     gearId: ID!
@@ -151,93 +812,18 @@ const typeDefs = external_graphql_tag_namespaceObject.gql`
     gear: AudioGear
     case: Case
     compatibilityScore: Float!
-    dimensionFit: DimensionFit
-    priceCategory: String
-    protectionLevel: String
-    features: [String]
-    userRating: Float
-    reviewCount: Int
-    createdAt: String
-    updatedAt: String
+    matchReason: String
+    notes: String
   }
 
-  # User feedback type
-  type UserFeedback {
-    id: ID!
-    userId: ID
-    gearId: ID!
-    caseId: ID!
-    rating: Float!
-    comments: String
-    fitAccuracy: Float
-    protectionQuality: Float
-    valueForMoney: Float
-    actuallyPurchased: Boolean
-    createdAt: String
+  type Dimensions {
+    length: Float
+    width: Float
+    height: Float
+    unit: String
   }
 
-  # User type
-  type User {
-    id: ID!
-    name: String
-    email: String
-    savedGear: [AudioGear]
-    savedCases: [Case]
-    savedMatches: [GearCaseMatch]
-    createdAt: String
-    updatedAt: String
-  }
-
-  # Content type
-  type Content {
-    id: ID!
-    title: String!
-    slug: String!
-    content: String!
-    excerpt: String
-    author: String
-    category: String
-    tags: [String]
-    imageUrl: String
-    published: Boolean
-    publishedAt: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  # Affiliate link type
-  type AffiliateLink {
-    id: ID!
-    productId: ID!
-    productType: String!
-    provider: String!
-    url: String!
-    commission: Float
-    active: Boolean
-    createdAt: String
-    updatedAt: String
-  }
-
-  # Analytics type
-  type Analytics {
-    id: ID!
-    pageViews: Int
-    uniqueVisitors: Int
-    searchCount: Int
-    matchViewCount: Int
-    affiliateClickCount: Int
-    conversionRate: Float
-    period: String
-    createdAt: String
-  }
-
-  # Pagination input
-  input PaginationInput {
-    page: Int = 1
-    limit: Int = 10
-  }
-
-  # Pagination info
+  # Pagination
   type PaginationInfo {
     total: Int!
     page: Int!
@@ -245,10 +831,38 @@ const typeDefs = external_graphql_tag_namespaceObject.gql`
     pages: Int!
   }
 
-  # Gear filter input
+  type AudioGearResult {
+    items: [AudioGear!]!
+    pagination: PaginationInfo!
+  }
+
+  type CaseResult {
+    items: [Case!]!
+    pagination: PaginationInfo!
+  }
+
+  type MatchResult {
+    items: [GearCaseMatch!]!
+    pagination: PaginationInfo!
+  }
+
+  # Input types
+  input PaginationInput {
+    page: Int
+    limit: Int
+  }
+
+  input DimensionsInput {
+    length: Float
+    width: Float
+    height: Float
+    unit: String
+  }
+
   input GearFilterInput {
-    brands: [String]
+    search: String
     categories: [String]
+    brands: [String]
     types: [String]
     minPrice: Float
     maxPrice: Float
@@ -258,1079 +872,231 @@ const typeDefs = external_graphql_tag_namespaceObject.gql`
     sortDirection: String
   }
 
-  # Case filter input
   input CaseFilterInput {
+    search: String
     brands: [String]
     types: [String]
     protectionLevels: [String]
-    waterproof: Boolean
-    shockproof: Boolean
-    dustproof: Boolean
-    colors: [String]
-    materials: [String]
     minPrice: Float
     maxPrice: Float
     minRating: Float
     inStock: Boolean
+    waterproof: Boolean
+    shockproof: Boolean
+    dustproof: Boolean
     sortBy: String
     sortDirection: String
   }
 
-  # Match filter input
   input MatchFilterInput {
     gearId: ID
     caseId: ID
-    minCompatibilityScore: Float
-    protectionLevels: [String]
+    minScore: Float
     sortBy: String
     sortDirection: String
   }
 
-  # Gear search result
-  type GearSearchResult {
-    items: [AudioGear]!
-    pagination: PaginationInfo!
-  }
-
-  # Case search result
-  type CaseSearchResult {
-    items: [Case]!
-    pagination: PaginationInfo!
-  }
-
-  # Match search result
-  type MatchSearchResult {
-    items: [GearCaseMatch]!
-    pagination: PaginationInfo!
-  }
-
-  # User feedback result
-  type UserFeedbackResult {
-    items: [UserFeedback]!
-    pagination: PaginationInfo!
-  }
-
-  # Content search result
-  type ContentSearchResult {
-    items: [Content]!
-    pagination: PaginationInfo!
-  }
-
-  # Category result
-  type CategoryResult {
-    items: [CategoryItem]!
-  }
-
-  # Category item
-  type CategoryItem {
-    category: String!
-  }
-
-  # Brand result
-  type BrandResult {
-    items: [BrandItem]!
-  }
-
-  # Brand item
-  type BrandItem {
-    brand: String!
-  }
-
-  # Query type
+  # Queries
   type Query {
-    # Gear queries
+    # Get all gear with pagination and filtering
+    allGear(pagination: PaginationInput): AudioGearResult!
+    
+    # Get gear by ID
     gear(id: ID!): AudioGear
-    allGear(pagination: PaginationInput): GearSearchResult
-    searchGear(query: String!, pagination: PaginationInput): GearSearchResult
-    filterGear(filter: GearFilterInput!, pagination: PaginationInput): GearSearchResult
-    gearCategories: CategoryResult
-    gearBrands: BrandResult
-
-    # Case queries
+    
+    # Filter gear
+    filterGear(filter: GearFilterInput!, pagination: PaginationInput): AudioGearResult!
+    
+    # Get all cases with pagination and filtering
+    allCases(pagination: PaginationInput): CaseResult!
+    
+    # Get case by ID
     case(id: ID!): Case
-    allCases(pagination: PaginationInput): CaseSearchResult
-    searchCases(query: String!, pagination: PaginationInput): CaseSearchResult
-    filterCases(filter: CaseFilterInput!, pagination: PaginationInput): CaseSearchResult
-    caseTypes: [String]
-    caseBrands: [String]
-    caseColors: [String]
-    caseMaterials: [String]
-
-    # Match queries
+    
+    # Filter cases
+    filterCases(filter: CaseFilterInput!, pagination: PaginationInput): CaseResult!
+    
+    # Get matches between gear and cases
+    matches(filter: MatchFilterInput!, pagination: PaginationInput): MatchResult!
+    
+    # Get matches for specific gear
+    matchesForGear(gearId: ID!, pagination: PaginationInput): MatchResult!
+    
+    # Get matches for specific case
+    matchesForCase(caseId: ID!, pagination: PaginationInput): MatchResult!
+    
+    # Get a specific match
     match(id: ID!): GearCaseMatch
-    matchesForGear(gearId: ID!, pagination: PaginationInput): MatchSearchResult
-    matchesForCase(caseId: ID!, pagination: PaginationInput): MatchSearchResult
-    filterMatches(filter: MatchFilterInput!, pagination: PaginationInput): MatchSearchResult
-    recommendMatches(gearId: ID!, pagination: PaginationInput): MatchSearchResult
-
-    # User queries
-    user(id: ID!): User
-    userByEmail(email: String!): User
-
-    # Feedback queries
-    feedbackForMatch(gearId: ID!, caseId: ID!, pagination: PaginationInput): UserFeedbackResult
-
-    # Content queries
-    content(id: ID!): Content
-    contentBySlug(slug: String!): Content
-    allContent(pagination: PaginationInput): ContentSearchResult
-    contentByCategory(category: String!, pagination: PaginationInput): ContentSearchResult
-
-    # Analytics queries
-    siteAnalytics(period: String!): Analytics
-  }
-
-  # Mutation type
-  type Mutation {
-    # Gear mutations
-    createGear(input: GearInput!): AudioGear
-    updateGear(id: ID!, input: GearInput!): AudioGear
-    deleteGear(id: ID!): Boolean
-
-    # Case mutations
-    createCase(input: CaseInput!): Case
-    updateCase(id: ID!, input: CaseInput!): Case
-    deleteCase(id: ID!): Boolean
-
-    # Match mutations
-    createMatch(gearId: ID!, caseId: ID!): GearCaseMatch
-    updateMatch(id: ID!, input: MatchInput!): GearCaseMatch
-    deleteMatch(id: ID!): Boolean
-    generateMatches(gearId: ID): Int
-
-    # User mutations
-    createUser(input: UserInput!): User
-    updateUser(id: ID!, input: UserInput!): User
-    deleteUser(id: ID!): Boolean
-    saveGear(userId: ID!, gearId: ID!): User
-    saveCase(userId: ID!, caseId: ID!): User
-    saveMatch(userId: ID!, matchId: ID!): User
-    removeGear(userId: ID!, gearId: ID!): User
-    removeCase(userId: ID!, caseId: ID!): User
-    removeMatch(userId: ID!, matchId: ID!): User
-
-    # Feedback mutations
-    createFeedback(input: FeedbackInput!): UserFeedback
-    updateFeedback(id: ID!, input: FeedbackInput!): UserFeedback
-    deleteFeedback(id: ID!): Boolean
-
-    # Content mutations
-    createContent(input: ContentInput!): Content
-    updateContent(id: ID!, input: ContentInput!): Content
-    deleteContent(id: ID!): Boolean
-    publishContent(id: ID!): Content
-    unpublishContent(id: ID!): Content
-
-    # Affiliate mutations
-    createAffiliateLink(input: AffiliateLinkInput!): AffiliateLink
-    updateAffiliateLink(id: ID!, input: AffiliateLinkInput!): AffiliateLink
-    deleteAffiliateLink(id: ID!): Boolean
-    trackAffiliateClick(id: ID!): Boolean
-  }
-
-  # Gear input
-  input GearInput {
-    name: String!
-    brand: String!
-    category: String!
-    type: String!
-    dimensions: DimensionsInput!
-    weight: WeightInput
-    imageUrl: String
-    productUrl: String
-    description: String
-    price: Float
-    currency: String
-    inStock: Boolean
-    rating: Float
-    reviewCount: Int
-    features: [String]
-    compatibleWith: [String]
-    seller: SellerInput
-  }
-
-  # Case input
-  input CaseInput {
-    name: String!
-    brand: String
-    type: String!
-    internalDimensions: DimensionsInput!
-    externalDimensions: DimensionsInput
-    weight: WeightInput
-    imageUrl: String
-    productUrl: String
-    description: String
-    price: Float
-    currency: String
-    inStock: Boolean
-    rating: Float
-    reviewCount: Int
-    features: [String]
-    protectionLevel: String
-    waterproof: Boolean
-    shockproof: Boolean
-    dustproof: Boolean
-    color: String
-    material: String
-    seller: SellerInput
-  }
-
-  # Dimensions input
-  input DimensionsInput {
-    length: Float!
-    width: Float!
-    height: Float!
-    unit: String!
-  }
-
-  # Weight input
-  input WeightInput {
-    value: Float!
-    unit: String!
-  }
-
-  # Seller input
-  input SellerInput {
-    name: String!
-    url: String
-    rating: Float
-  }
-
-  # Match input
-  input MatchInput {
-    compatibilityScore: Float
-    dimensionFit: DimensionFitInput
-    priceCategory: String
-    protectionLevel: String
-    features: [String]
-  }
-
-  # Dimension fit input
-  input DimensionFitInput {
-    length: Float!
-    width: Float!
-    height: Float!
-    overall: Float!
-  }
-
-  # User input
-  input UserInput {
-    name: String
-    email: String!
-  }
-
-  # Feedback input
-  input FeedbackInput {
-    userId: ID
-    gearId: ID!
-    caseId: ID!
-    rating: Float!
-    comments: String
-    fitAccuracy: Float
-    protectionQuality: Float
-    valueForMoney: Float
-    actuallyPurchased: Boolean
-  }
-
-  # Content input
-  input ContentInput {
-    title: String!
-    slug: String!
-    content: String!
-    excerpt: String
-    author: String
-    category: String
-    tags: [String]
-    imageUrl: String
-    published: Boolean
-  }
-
-  # Affiliate link input
-  input AffiliateLinkInput {
-    productId: ID!
-    productType: String!
-    provider: String!
-    url: String!
-    commission: Float
-    active: Boolean
+    
+    # Query to check if the API is working
+    apiStatus: String!
   }
 `;
-// Define resolvers
-const resolvers = {
-    Query: {
-        // Gear queries
-        gear: async (_, { id })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                return await gear_models/* AudioGear */.a1.findById(id);
-            } catch (error) {
-                console.error("Error fetching gear:", error);
-                throw new Error("Failed to fetch gear");
-            }
-        },
-        gearCategories: async ()=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const categories = await gear_models/* AudioGear */.a1.distinct("category");
-                return {
-                    items: categories.filter(Boolean).map((category)=>({
-                            category
-                        }))
-                };
-            } catch (error) {
-                console.error("Error fetching gear categories:", error);
-                return {
-                    items: []
-                }; // Return empty array instead of throwing error
-            }
-        },
-        gearBrands: async ()=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const brands = await gear_models/* AudioGear */.a1.distinct("brand");
-                return {
-                    items: brands.filter(Boolean).map((brand)=>({
-                            brand
-                        }))
-                };
-            } catch (error) {
-                console.error("Error fetching gear brands:", error);
-                return {
-                    items: []
-                }; // Return empty array instead of throwing error
-            }
-        },
-        allGear: async (_, { pagination = {
-            page: 1,
-            limit: 10
-        } })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const { page, limit } = pagination;
-                const skip = (page - 1) * limit;
-                // Set a timeout for the database operation
-                const timeoutPromise = new Promise((_, reject)=>{
-                    setTimeout(()=>reject(new Error("Database operation timeout")), 10000);
-                });
-                // Database operation with timeout
-                const dbOperation = async ()=>{
-                    try {
-                        // Use aggregation to get items and count in a single query
-                        const result = await gear_models/* AudioGear */.a1.aggregate([
-                            {
-                                $facet: {
-                                    items: [
-                                        {
-                                            $sort: {
-                                                name: 1
-                                            }
-                                        },
-                                        {
-                                            $skip: skip
-                                        },
-                                        {
-                                            $limit: limit
-                                        }
-                                    ],
-                                    totalCount: [
-                                        {
-                                            $count: "count"
-                                        }
-                                    ]
-                                }
-                            }
-                        ]).exec();
-                        const items = result[0].items;
-                        const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-                        return {
-                            items,
-                            pagination: {
-                                total,
-                                page,
-                                limit,
-                                pages: Math.ceil(total / limit)
-                            }
-                        };
-                    } catch (dbError) {
-                        console.error("Database error in allGear:", dbError);
-                        return {
-                            items: [],
-                            pagination: {
-                                total: 0,
-                                page,
-                                limit,
-                                pages: 0
-                            }
-                        };
-                    }
-                };
-                // Race between database operation and timeout
-                return Promise.race([
-                    dbOperation(),
-                    timeoutPromise
-                ]);
-            } catch (error) {
-                console.error("Error fetching all gear:", error);
-                return {
-                    items: [],
-                    pagination: {
-                        total: 0,
-                        page: pagination.page,
-                        limit: pagination.limit,
-                        pages: 0
-                    }
-                };
-            }
-        },
-        searchGear: async (_, { query, pagination = {
-            page: 1,
-            limit: 10
-        } })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const { page, limit } = pagination;
-                const skip = (page - 1) * limit;
-                // Set a timeout for the database operation
-                const timeoutPromise = new Promise((_, reject)=>{
-                    setTimeout(()=>reject(new Error("Database operation timeout")), 10000);
-                });
-                // Database operation with timeout
-                const dbOperation = async ()=>{
-                    try {
-                        const searchRegex = new RegExp(query, "i");
-                        const searchQuery = {
-                            $or: [
-                                {
-                                    name: searchRegex
-                                },
-                                {
-                                    brand: searchRegex
-                                },
-                                {
-                                    category: searchRegex
-                                },
-                                {
-                                    type: searchRegex
-                                },
-                                {
-                                    description: searchRegex
-                                }
-                            ]
-                        };
-                        // Use aggregation to get items and count in a single query
-                        const result = await gear_models/* AudioGear */.a1.aggregate([
-                            {
-                                $match: searchQuery
-                            },
-                            {
-                                $facet: {
-                                    items: [
-                                        {
-                                            $sort: {
-                                                name: 1
-                                            }
-                                        },
-                                        {
-                                            $skip: skip
-                                        },
-                                        {
-                                            $limit: limit
-                                        }
-                                    ],
-                                    totalCount: [
-                                        {
-                                            $count: "count"
-                                        }
-                                    ]
-                                }
-                            }
-                        ]).exec();
-                        const items = result[0].items;
-                        const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-                        return {
-                            items,
-                            pagination: {
-                                total,
-                                page,
-                                limit,
-                                pages: Math.ceil(total / limit)
-                            }
-                        };
-                    } catch (dbError) {
-                        console.error("Database error in searchGear:", dbError);
-                        return {
-                            items: [],
-                            pagination: {
-                                total: 0,
-                                page,
-                                limit,
-                                pages: 0
-                            }
-                        };
-                    }
-                };
-                // Race between database operation and timeout
-                return Promise.race([
-                    dbOperation(),
-                    timeoutPromise
-                ]);
-            } catch (error) {
-                console.error("Error searching gear:", error);
-                return {
-                    items: [],
-                    pagination: {
-                        total: 0,
-                        page: pagination.page,
-                        limit: pagination.limit,
-                        pages: 0
-                    }
-                };
-            }
-        },
-        filterGear: async (_, { filter, pagination = {
-            page: 1,
-            limit: 10
-        } })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const { page, limit } = pagination;
-                const skip = (page - 1) * limit;
-                // Set a timeout for the database operation
-                const timeoutPromise = new Promise((_, reject)=>{
-                    setTimeout(()=>reject(new Error("Database operation timeout")), 10000);
-                });
-                // Database operation with timeout
-                const dbOperation = async ()=>{
-                    try {
-                        // Build filter query
-                        const query = {};
-                        if (filter.brands && filter.brands.length > 0) {
-                            query.brand = {
-                                $in: filter.brands
-                            };
-                        }
-                        if (filter.categories && filter.categories.length > 0) {
-                            query.category = {
-                                $in: filter.categories
-                            };
-                        }
-                        if (filter.types && filter.types.length > 0) {
-                            query.type = {
-                                $in: filter.types
-                            };
-                        }
-                        if (filter.minPrice !== undefined) {
-                            query.price = query.price || {};
-                            query.price.$gte = filter.minPrice;
-                        }
-                        if (filter.maxPrice !== undefined) {
-                            query.price = query.price || {};
-                            query.price.$lte = filter.maxPrice;
-                        }
-                        if (filter.inStock !== undefined) {
-                            query.inStock = filter.inStock;
-                        }
-                        if (filter.minRating !== undefined) {
-                            query.rating = {
-                                $gte: filter.minRating
-                            };
-                        }
-                        // Create sort object with explicit 1/-1 values
-                        const sortField = filter.sortBy || "name";
-                        const sortDirection = filter.sortDirection === "desc" ? -1 : 1;
-                        const sortObj = {};
-                        sortObj[sortField] = sortDirection;
-                        // Use aggregation to get items and count in a single query
-                        const result = await gear_models/* AudioGear */.a1.aggregate([
-                            {
-                                $match: query
-                            },
-                            {
-                                $facet: {
-                                    items: [
-                                        {
-                                            $sort: sortObj
-                                        },
-                                        {
-                                            $skip: skip
-                                        },
-                                        {
-                                            $limit: limit
-                                        }
-                                    ],
-                                    totalCount: [
-                                        {
-                                            $count: "count"
-                                        }
-                                    ]
-                                }
-                            }
-                        ]).exec();
-                        const items = result[0].items;
-                        const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-                        return {
-                            items,
-                            pagination: {
-                                total,
-                                page,
-                                limit,
-                                pages: Math.ceil(total / limit)
-                            }
-                        };
-                    } catch (dbError) {
-                        console.error("Database error in filterGear:", dbError);
-                        return {
-                            items: [],
-                            pagination: {
-                                total: 0,
-                                page,
-                                limit,
-                                pages: 0
-                            }
-                        };
-                    }
-                };
-                // Race between database operation and timeout
-                return Promise.race([
-                    dbOperation(),
-                    timeoutPromise
-                ]);
-            } catch (error) {
-                console.error("Error filtering gear:", error);
-                return {
-                    items: [],
-                    pagination: {
-                        total: 0,
-                        page: pagination.page,
-                        limit: pagination.limit,
-                        pages: 0
-                    }
-                };
-            }
-        },
-        // Case queries
-        case: async (_, { id })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                return await gear_models/* Case */.JZ.findById(id);
-            } catch (error) {
-                console.error("Error fetching case:", error);
-                throw new Error("Failed to fetch case");
-            }
-        },
-        allCases: async (_, { pagination = {
-            page: 1,
-            limit: 10
-        } })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const { page, limit } = pagination;
-                const skip = (page - 1) * limit;
-                // Set a timeout for the database operation
-                const timeoutPromise = new Promise((_, reject)=>{
-                    setTimeout(()=>reject(new Error("Database operation timeout")), 10000);
-                });
-                // Database operation with timeout
-                const dbOperation = async ()=>{
-                    try {
-                        // Use aggregation to get items and count in a single query
-                        const result = await gear_models/* Case */.JZ.aggregate([
-                            {
-                                $facet: {
-                                    items: [
-                                        {
-                                            $sort: {
-                                                name: 1
-                                            }
-                                        },
-                                        {
-                                            $skip: skip
-                                        },
-                                        {
-                                            $limit: limit
-                                        }
-                                    ],
-                                    totalCount: [
-                                        {
-                                            $count: "count"
-                                        }
-                                    ]
-                                }
-                            }
-                        ]).exec();
-                        const items = result[0].items;
-                        const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-                        return {
-                            items,
-                            pagination: {
-                                total,
-                                page,
-                                limit,
-                                pages: Math.ceil(total / limit)
-                            }
-                        };
-                    } catch (dbError) {
-                        console.error("Database error in allCases:", dbError);
-                        return {
-                            items: [],
-                            pagination: {
-                                total: 0,
-                                page,
-                                limit,
-                                pages: 0
-                            }
-                        };
-                    }
-                };
-                // Race between database operation and timeout
-                return Promise.race([
-                    dbOperation(),
-                    timeoutPromise
-                ]);
-            } catch (error) {
-                console.error("Error fetching all cases:", error);
-                return {
-                    items: [],
-                    pagination: {
-                        total: 0,
-                        page: pagination.page,
-                        limit: pagination.limit,
-                        pages: 0
-                    }
-                };
-            }
-        },
-        searchCases: async (_, { query, pagination = {
-            page: 1,
-            limit: 10
-        } })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const { page, limit } = pagination;
-                const skip = (page - 1) * limit;
-                // Set a timeout for the database operation
-                const timeoutPromise = new Promise((_, reject)=>{
-                    setTimeout(()=>reject(new Error("Database operation timeout")), 10000);
-                });
-                // Database operation with timeout
-                const dbOperation = async ()=>{
-                    try {
-                        const searchRegex = new RegExp(query, "i");
-                        const searchQuery = {
-                            $or: [
-                                {
-                                    name: searchRegex
-                                },
-                                {
-                                    brand: searchRegex
-                                },
-                                {
-                                    type: searchRegex
-                                },
-                                {
-                                    description: searchRegex
-                                }
-                            ]
-                        };
-                        // Use aggregation to get items and count in a single query
-                        const result = await gear_models/* Case */.JZ.aggregate([
-                            {
-                                $match: searchQuery
-                            },
-                            {
-                                $facet: {
-                                    items: [
-                                        {
-                                            $sort: {
-                                                name: 1
-                                            }
-                                        },
-                                        {
-                                            $skip: skip
-                                        },
-                                        {
-                                            $limit: limit
-                                        }
-                                    ],
-                                    totalCount: [
-                                        {
-                                            $count: "count"
-                                        }
-                                    ]
-                                }
-                            }
-                        ]).exec();
-                        const items = result[0].items;
-                        const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-                        return {
-                            items,
-                            pagination: {
-                                total,
-                                page,
-                                limit,
-                                pages: Math.ceil(total / limit)
-                            }
-                        };
-                    } catch (dbError) {
-                        console.error("Database error in searchCases:", dbError);
-                        return {
-                            items: [],
-                            pagination: {
-                                total: 0,
-                                page,
-                                limit,
-                                pages: 0
-                            }
-                        };
-                    }
-                };
-                // Race between database operation and timeout
-                return Promise.race([
-                    dbOperation(),
-                    timeoutPromise
-                ]);
-            } catch (error) {
-                console.error("Error searching cases:", error);
-                return {
-                    items: [],
-                    pagination: {
-                        total: 0,
-                        page: pagination.page,
-                        limit: pagination.limit,
-                        pages: 0
-                    }
-                };
-            }
-        },
-        filterCases: async (_, { filter, pagination = {
-            page: 1,
-            limit: 10
-        } })=>{
-            try {
-                await mongodb/* clientPromise */.xd;
-                const { page, limit } = pagination;
-                const skip = (page - 1) * limit;
-                // Set a timeout for the database operation
-                const timeoutPromise = new Promise((_, reject)=>{
-                    setTimeout(()=>reject(new Error("Database operation timeout")), 10000);
-                });
-                // Database operation with timeout
-                const dbOperation = async ()=>{
-                    try {
-                        // Build filter query
-                        const query = {};
-                        if (filter.brands && filter.brands.length > 0) {
-                            query.brand = {
-                                $in: filter.brands
-                            };
-                        }
-                        if (filter.types && filter.types.length > 0) {
-                            query.type = {
-                                $in: filter.types
-                            };
-                        }
-                        if (filter.protectionLevels && filter.protectionLevels.length > 0) {
-                            query.protectionLevel = {
-                                $in: filter.protectionLevels
-                            };
-                        }
-                        if (filter.waterproof !== undefined) {
-                            query.waterproof = filter.waterproof;
-                        }
-                        if (filter.shockproof !== undefined) {
-                            query.shockproof = filter.shockproof;
-                        }
-                        if (filter.dustproof !== undefined) {
-                            query.dustproof = filter.dustproof;
-                        }
-                        if (filter.colors && filter.colors.length > 0) {
-                            query.color = {
-                                $in: filter.colors
-                            };
-                        }
-                        if (filter.materials && filter.materials.length > 0) {
-                            query.material = {
-                                $in: filter.materials
-                            };
-                        }
-                        if (filter.minPrice !== undefined) {
-                            query.price = query.price || {};
-                            query.price.$gte = filter.minPrice;
-                        }
-                        if (filter.maxPrice !== undefined) {
-                            query.price = query.price || {};
-                            query.price.$lte = filter.maxPrice;
-                        }
-                        if (filter.inStock !== undefined) {
-                            query.inStock = filter.inStock;
-                        }
-                        if (filter.minRating !== undefined) {
-                            query.rating = {
-                                $gte: filter.minRating
-                            };
-                        }
-                        // Create sort object with explicit 1/-1 values
-                        const sortField = filter.sortBy || "name";
-                        const sortDirection = filter.sortDirection === "desc" ? -1 : 1;
-                        const sortObj = {};
-                        sortObj[sortField] = sortDirection;
-                        // Use aggregation to get items and count in a single query
-                        const result = await gear_models/* Case */.JZ.aggregate([
-                            {
-                                $match: query
-                            },
-                            {
-                                $facet: {
-                                    items: [
-                                        {
-                                            $sort: sortObj
-                                        },
-                                        {
-                                            $skip: skip
-                                        },
-                                        {
-                                            $limit: limit
-                                        }
-                                    ],
-                                    totalCount: [
-                                        {
-                                            $count: "count"
-                                        }
-                                    ]
-                                }
-                            }
-                        ]).exec();
-                        const items = result[0].items;
-                        const total = result[0].totalCount.length > 0 ? result[0].totalCount[0].count : 0;
-                        return {
-                            items,
-                            pagination: {
-                                total,
-                                page,
-                                limit,
-                                pages: Math.ceil(total / limit)
-                            }
-                        };
-                    } catch (dbError) {
-                        console.error("Database error in filterCases:", dbError);
-                        return {
-                            items: [],
-                            pagination: {
-                                total: 0,
-                                page,
-                                limit,
-                                pages: 0
-                            }
-                        };
-                    }
-                };
-                // Race between database operation and timeout
-                return Promise.race([
-                    dbOperation(),
-                    timeoutPromise
-                ]);
-            } catch (error) {
-                console.error("Error filtering cases:", error);
-                return {
-                    items: [],
-                    pagination: {
-                        total: 0,
-                        page: pagination.page,
-                        limit: pagination.limit,
-                        pages: 0
-                    }
-                };
-            }
+
+
+/***/ }),
+
+/***/ 583:
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var mongoose__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1185);
+/* harmony import */ var mongoose__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(mongoose__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _lib_mongodb__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(8377);
+/* harmony import */ var _graphql_schema__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(9895);
+/* harmony import */ var _graphql_resolvers__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(5906);
+/* harmony import */ var _lib_monitoring__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(9241);
+/* harmony import */ var graphql__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(7343);
+/* harmony import */ var graphql__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(graphql__WEBPACK_IMPORTED_MODULE_5__);
+/* harmony import */ var _graphql_tools_schema__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(6550);
+var __webpack_async_dependencies__ = __webpack_handle_async_dependencies__([_graphql_tools_schema__WEBPACK_IMPORTED_MODULE_6__]);
+_graphql_tools_schema__WEBPACK_IMPORTED_MODULE_6__ = (__webpack_async_dependencies__.then ? (await __webpack_async_dependencies__)() : __webpack_async_dependencies__)[0];
+// Update GraphQL API handler to use a direct approach without Apollo Server start()
+
+
+
+
+
+
+
+
+// Create a request logger for debugging
+const logRequest = (req)=>{
+    const timestamp = new Date().toISOString();
+    const requestId = Math.random().toString(36).substring(2, 15);
+    console.log(`[${timestamp}] [${requestId}] === GraphQL Request ===`);
+    console.log(`[${timestamp}] [${requestId}] Method: ${req.method}`);
+    console.log(`[${timestamp}] [${requestId}] URL: ${req.url}`);
+    console.log(`[${timestamp}] [${requestId}] Headers:`, JSON.stringify(req.headers, null, 2));
+    if (req.body) {
+        try {
+            console.log(`[${timestamp}] [${requestId}] Body:`, JSON.stringify(req.body, null, 2));
+        } catch (e) {
+            console.log(`[${timestamp}] [${requestId}] Body: [Unable to stringify body]`);
         }
     }
+    return {
+        timestamp,
+        requestId
+    };
 };
-// Create Apollo Server
-const apolloServer = new external_apollo_server_micro_namespaceObject.ApolloServer({
-    typeDefs,
-    resolvers,
-    plugins: [
-        (0,external_apollo_server_core_namespaceObject.ApolloServerPluginLandingPageGraphQLPlayground)()
-    ],
-    introspection: true
+// Create an executable schema once
+const executableSchema = (0,_graphql_tools_schema__WEBPACK_IMPORTED_MODULE_6__.makeExecutableSchema)({
+    typeDefs: _graphql_schema__WEBPACK_IMPORTED_MODULE_2__/* .typeDefs */ .U,
+    resolvers: _graphql_resolvers__WEBPACK_IMPORTED_MODULE_3__/* .resolvers */ .s
 });
-// Initialize database indexes when server starts
-(async ()=>{
-    try {
-        await mongodb/* clientPromise */.xd;
-        // Create indexes on frequently queried fields
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            brand: 1
-        });
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            category: 1
-        });
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            type: 1
-        });
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            price: 1
-        });
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            rating: 1
-        });
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            name: "text",
-            description: "text"
-        });
-        // Compound indexes for common filter combinations
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            brand: 1,
-            category: 1
-        });
-        await gear_models/* AudioGear */.a1.collection.createIndex({
-            category: 1,
-            type: 1
-        });
-        // Case indexes
-        await gear_models/* Case */.JZ.collection.createIndex({
-            brand: 1
-        });
-        await gear_models/* Case */.JZ.collection.createIndex({
-            type: 1
-        });
-        await gear_models/* Case */.JZ.collection.createIndex({
-            protectionLevel: 1
-        });
-        await gear_models/* Case */.JZ.collection.createIndex({
-            price: 1
-        });
-        await gear_models/* Case */.JZ.collection.createIndex({
-            rating: 1
-        });
-        await gear_models/* Case */.JZ.collection.createIndex({
-            name: "text",
-            description: "text"
-        });
-        // Compound indexes for common filter combinations
-        await gear_models/* Case */.JZ.collection.createIndex({
-            brand: 1,
-            type: 1
-        });
-        await gear_models/* Case */.JZ.collection.createIndex({
-            waterproof: 1,
-            shockproof: 1,
-            dustproof: 1
-        });
-        console.log("Database indexes created successfully");
-    } catch (error) {
-        console.error("Error initializing database indexes:", error);
+// Create handler with enhanced logging and CORS support
+const baseHandler = async (req, res)=>{
+    // Log request details for debugging
+    const { timestamp, requestId } = logRequest(req);
+    // Handle CORS preflight requests explicitly
+    if (req.method === "OPTIONS") {
+        console.log(`[${timestamp}] [${requestId}] Handling OPTIONS request (CORS preflight)`);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+        res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, apollo-require-preflight, Apollo-Require-Preflight");
+        res.status(204).end();
+        console.log(`[${timestamp}] [${requestId}] OPTIONS request completed with 204 status`);
+        return;
     }
-})();
-// Create handler function
-const handler = (req, res)=>{
-    // Use micro handler from apollo-server-micro
-    return apolloServer.createHandler({
-        path: "/api/graphql"
-    })(req, res);
+    // Set CORS headers for all responses
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+    res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, apollo-require-preflight, Apollo-Require-Preflight");
+    // Only allow POST requests for GraphQL operations
+    if (req.method !== "POST") {
+        console.error(`[${timestamp}] [${requestId}] Method ${req.method} not allowed for GraphQL endpoint`);
+        res.status(405).json({
+            errors: [
+                {
+                    message: `Method ${req.method} not allowed for GraphQL endpoint`,
+                    extensions: {
+                        code: "METHOD_NOT_ALLOWED"
+                    }
+                }
+            ]
+        });
+        return;
+    }
+    try {
+        // Connect to database if needed - with enhanced error handling
+        try {
+            if (!(mongoose__WEBPACK_IMPORTED_MODULE_0___default().connection).readyState) {
+                console.log(`[${timestamp}] [${requestId}] Connecting to database...`);
+                await (0,_lib_mongodb__WEBPACK_IMPORTED_MODULE_1__/* ["default"] */ .ZP)();
+                console.log(`[${timestamp}] [${requestId}] Database connection established`);
+            }
+        } catch (dbError) {
+            // Log the error but continue processing the request
+            console.error(`[${timestamp}] [${requestId}] Database connection error:`, dbError);
+            console.log(`[${timestamp}] [${requestId}] Continuing without database connection`);
+        // We don't throw here, allowing the GraphQL API to function even without DB
+        }
+        // Process the GraphQL request directly without using Apollo Server's start()
+        console.log(`[${timestamp}] [${requestId}] Processing GraphQL request directly...`);
+        // Extract the GraphQL query from the request body
+        const { query, variables, operationName } = req.body;
+        if (!query) {
+            throw new Error("No GraphQL query provided");
+        }
+        // Parse the query
+        const document = (0,graphql__WEBPACK_IMPORTED_MODULE_5__.parse)(query);
+        // Validate the query against the schema
+        const validationErrors = (0,graphql__WEBPACK_IMPORTED_MODULE_5__.validate)(executableSchema, document, graphql__WEBPACK_IMPORTED_MODULE_5__.specifiedRules);
+        if (validationErrors.length > 0) {
+            return res.status(400).json({
+                errors: validationErrors
+            });
+        }
+        // Execute the query
+        const result = await (0,graphql__WEBPACK_IMPORTED_MODULE_5__.execute)({
+            schema: executableSchema,
+            document,
+            variableValues: variables,
+            operationName,
+            contextValue: {
+                requestId,
+                timestamp
+            }
+        });
+        // Log the operation
+        console.log(`[${timestamp}] [${requestId}] GraphQL operation: ${operationName || "anonymous"}`);
+        // Return the result
+        const responseTime = Date.now() - new Date(timestamp).getTime();
+        console.log(`[${timestamp}] [${requestId}] Response sent in ${responseTime}ms`);
+        // Set cache control header
+        res.setHeader("Cache-Control", "no-store");
+        // Send the response
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error(`[${timestamp}] [${requestId}] Error handling request:`, error);
+        // Format the error response
+        const formattedError = error instanceof graphql__WEBPACK_IMPORTED_MODULE_5__.GraphQLError ? error : new graphql__WEBPACK_IMPORTED_MODULE_5__.GraphQLError(error instanceof Error ? error.message : String(error), {
+            extensions: {
+                code: "INTERNAL_SERVER_ERROR",
+                requestId,
+                timestamp
+            }
+        });
+        res.status(500).json({
+            errors: [
+                formattedError
+            ]
+        });
+    }
 };
-// Export the handler
-/* harmony default export */ const graphql = (handler);
+// Wrap the handler with monitoring middleware
+const handler = (0,_lib_monitoring__WEBPACK_IMPORTED_MODULE_4__/* .withMonitoring */ .sQ)(baseHandler);
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (handler);
 
+__webpack_async_result__();
+} catch(e) { __webpack_async_result__(e); } });
 
 /***/ })
 
@@ -1341,7 +1107,7 @@ const handler = (req, res)=>{
 var __webpack_require__ = require("../../webpack-api-runtime.js");
 __webpack_require__.C(exports);
 var __webpack_exec__ = (moduleId) => (__webpack_require__(__webpack_require__.s = moduleId))
-var __webpack_exports__ = __webpack_require__.X(0, [338,377,788,985], () => (__webpack_exec__(4434)));
+var __webpack_exports__ = __webpack_require__.X(0, [338,377,241], () => (__webpack_exec__(583)));
 module.exports = __webpack_exports__;
 
 })();

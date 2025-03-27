@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getScraperManager, ensureDirectories, getMongoDBIntegration } from '../../../lib/vercel-compatible-scrapers';
+import { getProductDetails, ensureDirectories } from '../../../lib/vercel-compatible-scrapers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only allow POST requests
@@ -18,17 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Marketplace and productId parameters are required' });
     }
 
-    // Get the scraper manager
-    const scraperManager = getScraperManager();
-
-    // Get the specific scraper
-    const scraper = scraperManager.getScraper(marketplace);
-    if (!scraper) {
-      return res.status(400).json({ error: `Scraper for marketplace '${marketplace}' not found` });
-    }
-
     // Get product details
-    const productDetails = await scraperManager.getProductDetails(marketplace, productId);
+    const productDetails = await getProductDetails(marketplace, productId);
     
     if (!productDetails) {
       return res.status(404).json({ error: 'Product not found' });
@@ -40,8 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       productId,
       product: productDetails 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in product details API:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error?.message || 'Unknown error occurred' 
+    });
   }
 }

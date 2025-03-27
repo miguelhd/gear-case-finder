@@ -312,9 +312,9 @@ GearCaseMatchSchema.index({
     unique: true
 });
 // Create and export models
-const AudioGear = mongoose__WEBPACK_IMPORTED_MODULE_0__.models.AudioGear || (0,mongoose__WEBPACK_IMPORTED_MODULE_0__.model)("AudioGear", AudioGearSchema);
-const Case = mongoose__WEBPACK_IMPORTED_MODULE_0__.models.Case || (0,mongoose__WEBPACK_IMPORTED_MODULE_0__.model)("Case", CaseSchema);
-const GearCaseMatch = mongoose__WEBPACK_IMPORTED_MODULE_0__.models.GearCaseMatch || (0,mongoose__WEBPACK_IMPORTED_MODULE_0__.model)("GearCaseMatch", GearCaseMatchSchema);
+const AudioGear = mongoose__WEBPACK_IMPORTED_MODULE_0__.models.AudioGear || (0,mongoose__WEBPACK_IMPORTED_MODULE_0__.model)("AudioGear", AudioGearSchema, "AudioGear");
+const Case = mongoose__WEBPACK_IMPORTED_MODULE_0__.models.Case || (0,mongoose__WEBPACK_IMPORTED_MODULE_0__.model)("Case", CaseSchema, "Case");
+const GearCaseMatch = mongoose__WEBPACK_IMPORTED_MODULE_0__.models.GearCaseMatch || (0,mongoose__WEBPACK_IMPORTED_MODULE_0__.model)("GearCaseMatch", GearCaseMatchSchema, "GearCaseMatch");
 
 
 /***/ })
