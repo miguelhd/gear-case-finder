@@ -92,7 +92,7 @@ export interface Product {
 // MongoDB connection helper
 export async function connectToMongoDB() {
   const mongoose = require('mongoose');
-  const uri = process.env.MONGODB_URI || 'mongodb+srv://gearCaseApp:rucwoj-watxor-Rocji5@cluster0.mongodb.net/musician-case-finder';
+  const uri = process.env.MONGODB_URI || 'mongodb+srv://gearCaseApp:rucwoj-watxor-Rocji5@gearcasefindercluster.emncnyk.mongodb.net/?retryWrites=true&w=majority&appName=GearCaseFinderCluster';
   
   try {
     await mongoose.connect(uri);
