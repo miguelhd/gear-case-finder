@@ -44,17 +44,18 @@ export const resolvers = {
         }
         
         // Check if collection exists and has documents
-        const collectionExists = await mongoose.connection.db.listCollections({ name: 'audiogears' }).hasNext();
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: AudioGear.collection.name }).hasNext();
         if (!collectionExists) {
-          console.error('AudioGear collection does not exist in the database');
+          console.error(`${AudioGear.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
         const count = await AudioGear.countDocuments();
-        console.log(`AudioGear collection has ${count} documents`);
+        console.log(`${AudioGear.collection.name} collection has ${count} documents`);
         
         if (count === 0) {
-          console.warn('AudioGear collection is empty');
+          console.warn(`${AudioGear.collection.name} collection is empty`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
@@ -125,17 +126,18 @@ export const resolvers = {
         }
         
         // Check if collection exists and has documents
-        const collectionExists = await mongoose.connection.db.listCollections({ name: 'audiogears' }).hasNext();
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: AudioGear.collection.name }).hasNext();
         if (!collectionExists) {
-          console.error('AudioGear collection does not exist in the database');
+          console.error(`${AudioGear.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
         const count = await AudioGear.countDocuments();
-        console.log(`AudioGear collection has ${count} documents`);
+        console.log(`${AudioGear.collection.name} collection has ${count} documents`);
         
         if (count === 0) {
-          console.warn('AudioGear collection is empty');
+          console.warn(`${AudioGear.collection.name} collection is empty`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
@@ -240,17 +242,18 @@ export const resolvers = {
         }
         
         // Check if collection exists and has documents
-        const collectionExists = await mongoose.connection.db.listCollections({ name: 'cases' }).hasNext();
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: Case.collection.name }).hasNext();
         if (!collectionExists) {
-          console.error('Case collection does not exist in the database');
+          console.error(`${Case.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
         const count = await Case.countDocuments();
-        console.log(`Case collection has ${count} documents`);
+        console.log(`${Case.collection.name} collection has ${count} documents`);
         
         if (count === 0) {
-          console.warn('Case collection is empty');
+          console.warn(`${Case.collection.name} collection is empty`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
@@ -320,17 +323,18 @@ export const resolvers = {
         }
         
         // Check if collection exists and has documents
-        const collectionExists = await mongoose.connection.db.listCollections({ name: 'cases' }).hasNext();
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: Case.collection.name }).hasNext();
         if (!collectionExists) {
-          console.error('Case collection does not exist in the database');
+          console.error(`${Case.collection.name} collection does not exist in the database`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
         const count = await Case.countDocuments();
-        console.log(`Case collection has ${count} documents`);
+        console.log(`${Case.collection.name} collection has ${count} documents`);
         
         if (count === 0) {
-          console.warn('Case collection is empty');
+          console.warn(`${Case.collection.name} collection is empty`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
@@ -434,6 +438,14 @@ export const resolvers = {
           }
         }
         
+        // Check if collection exists and has documents
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
+        if (!collectionExists) {
+          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
+          return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
+        }
+        
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
@@ -523,6 +535,14 @@ export const resolvers = {
           }
         }
         
+        // Check if collection exists and has documents
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
+        if (!collectionExists) {
+          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
+          return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
+        }
+        
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
@@ -585,6 +605,14 @@ export const resolvers = {
           }
         }
         
+        // Check if collection exists and has documents
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
+        if (!collectionExists) {
+          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
+          return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
+        }
+        
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
@@ -645,6 +673,14 @@ export const resolvers = {
           } catch (connError) {
             console.error('Failed to reconnect to MongoDB:', connError);
           }
+        }
+        
+        // Check if collection exists and has documents
+        // Use the model name directly instead of hardcoded collection name
+        const collectionExists = await mongoose.connection.db.listCollections({ name: GearCaseMatch.collection.name }).hasNext();
+        if (!collectionExists) {
+          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
+          return null;
         }
         
         // Explicitly type the result as IGearCaseMatchDocument
