@@ -23,6 +23,12 @@ export interface IAudioGear extends Document {
   popularity?: number;
   releaseYear?: number;
   discontinued?: boolean;
+  marketplace?: string;
+  price?: number;
+  currency?: string;
+  url?: string;
+  imageUrls?: string[];
+  availability?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -48,7 +54,13 @@ const AudioGearSchema = new Schema({
   description: { type: String },
   popularity: { type: Number },
   releaseYear: { type: Number },
-  discontinued: { type: Boolean, default: false }
+  discontinued: { type: Boolean, default: false },
+  marketplace: { type: String },
+  price: { type: Number },
+  currency: { type: String },
+  url: { type: String },
+  imageUrls: [{ type: String }],
+  availability: { type: String }
 }, { timestamps: true });
 
 // Case interface
@@ -220,4 +232,3 @@ GearCaseMatchSchema.index({ gearId: 1, caseId: 1 }, { unique: true });
 // Create and export models
 export const AudioGear = models.AudioGear || model<IAudioGear>('AudioGear', AudioGearSchema, 'AudioGear');
 export const Case = models.Case || model<ICase>('Case', CaseSchema, 'Case');
-export const GearCaseMatch = models.GearCaseMatch || model<IGearCaseMatch>('GearCaseMatch', GearCaseMatchSchema, 'GearCaseMatch');
