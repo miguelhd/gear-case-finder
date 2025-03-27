@@ -5,21 +5,28 @@ import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 
-// Configuration
-const LOG_DIR = process.env.LOG_DIR || './logs';
+// Configuration - Use /tmp directory in production environment
+const LOG_DIR = process.env.NODE_ENV === 'production' 
+  ? '/tmp/logs' 
+  : (process.env.LOG_DIR || './logs');
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_LOG_FILES = 5;
 const CHECK_INTERVAL = 60 * 1000; // 1 minute
 
-// Ensure log directory exists
-if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+// Ensure log directory exists with error handling
+try {
+  if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  }
+} catch (error) {
+  console.error(`Failed to create log directory ${LOG_DIR}:`, error);
+  // Continue execution even if directory creation fails
 }
 
 // Log file path
 const LOG_FILE = path.join(LOG_DIR, 'mongodb-connection.log');
 
-// Rotate logs if needed
+// Rotate logs if needed with error handling
 function rotateLogIfNeeded() {
   try {
     if (fs.existsSync(LOG_FILE) && fs.statSync(LOG_FILE).size > MAX_LOG_SIZE) {
@@ -42,16 +49,17 @@ function rotateLogIfNeeded() {
   }
 }
 
-// Write to log file
+// Write to log file with error handling
 function logToFile(message: string) {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message}\n`;
   
-  rotateLogIfNeeded();
-  
   try {
+    rotateLogIfNeeded();
     fs.appendFileSync(LOG_FILE, logMessage);
   } catch (error) {
+    // Fallback to console logging if file operations fail
+    console.error(`[MongoDB Monitor] ${message}`);
     console.error('Error writing to log file:', error);
   }
 }
@@ -132,25 +140,31 @@ async function checkMongoDBConnection() {
 
 // Start monitoring
 export function startMongoDBMonitoring() {
-  logToFile('Starting MongoDB connection monitoring');
-  
-  // Initial check
-  checkMongoDBConnection().catch(error => {
-    logToFile(`Error in initial connection check: ${error instanceof Error ? error.message : String(error)}`);
-  });
-  
-  // Set up interval for regular checks
-  const intervalId = setInterval(() => {
+  try {
+    logToFile('Starting MongoDB connection monitoring');
+    
+    // Initial check
     checkMongoDBConnection().catch(error => {
-      logToFile(`Error in scheduled connection check: ${error instanceof Error ? error.message : String(error)}`);
+      logToFile(`Error in initial connection check: ${error instanceof Error ? error.message : String(error)}`);
     });
-  }, CHECK_INTERVAL);
-  
-  // Return function to stop monitoring
-  return () => {
-    clearInterval(intervalId);
-    logToFile('MongoDB connection monitoring stopped');
-  };
+    
+    // Set up interval for regular checks
+    const intervalId = setInterval(() => {
+      checkMongoDBConnection().catch(error => {
+        logToFile(`Error in scheduled connection check: ${error instanceof Error ? error.message : String(error)}`);
+      });
+    }, CHECK_INTERVAL);
+    
+    // Return function to stop monitoring
+    return () => {
+      clearInterval(intervalId);
+      logToFile('MongoDB connection monitoring stopped');
+    };
+  } catch (error) {
+    console.error('Failed to start MongoDB monitoring:', error);
+    // Return a no-op function as fallback
+    return () => {};
+  }
 }
 
 // Export for use in other modules
