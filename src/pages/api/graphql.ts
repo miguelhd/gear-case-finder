@@ -60,23 +60,33 @@ const apolloServer = new ApolloServer({
 });
 
 // Initialize the Apollo Server
-// Note: We don't use an async IIFE here as it causes issues in Vercel's serverless environment
-let serverStartPromise: Promise<void> | null = null;
+// Use a global variable to track server initialization across function invocations
+// This is crucial for serverless environments where the handler may be called multiple times
+let isServerStarted = false;
 
-// Function to ensure server is started
-const ensureServerStarted = () => {
-  if (!serverStartPromise) {
+// Function to ensure server is started only once
+const ensureServerStarted = async () => {
+  if (!isServerStarted) {
     console.log('[Apollo] Starting Apollo Server...');
-    serverStartPromise = apolloServer.start().then(() => {
+    try {
+      await apolloServer.start();
+      isServerStarted = true;
       console.log('[Apollo] Apollo Server started successfully');
-    }).catch(err => {
+    } catch (err) {
       console.error('[Apollo] Failed to start Apollo Server:', err);
-      // Reset the promise so we can try again
-      serverStartPromise = null;
+      // Only reset if the error is not about multiple starts
+      if (!(err instanceof Error && err.message.includes('only call'))) {
+        isServerStarted = false;
+      } else {
+        // If the error is about multiple starts, consider the server started
+        console.log('[Apollo] Server already started in another instance');
+        isServerStarted = true;
+      }
       throw err;
-    });
+    }
+  } else {
+    console.log('[Apollo] Apollo Server already started');
   }
-  return serverStartPromise;
 };
 
 // Create handler with enhanced logging and CORS support
@@ -103,8 +113,18 @@ const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   // Ensure Apollo Server is started before handling the request
   try {
     console.log(`[${timestamp}] [${requestId}] Ensuring Apollo Server is started...`);
-    await ensureServerStarted();
-    console.log(`[${timestamp}] [${requestId}] Apollo Server is ready`);
+    try {
+      await ensureServerStarted();
+      console.log(`[${timestamp}] [${requestId}] Apollo Server is ready`);
+    } catch (serverError) {
+      // If the error is about multiple starts, we can continue
+      if (serverError instanceof Error && serverError.message.includes('only call')) {
+        console.log(`[${timestamp}] [${requestId}] Continuing despite server start error (likely already started)`);
+      } else {
+        // For other errors, we should stop
+        throw serverError;
+      }
+    }
     
     // Connect to database if needed - with enhanced error handling
     try {
