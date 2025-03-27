@@ -1,22 +1,10 @@
-# Todo List for Fixing 504 Gateway Timeout Issue
+# Todo List for Gear Case Finder Project
 
-## Analysis
-- [x] Clone repository and analyze codebase
-- [x] Examine PROGRESS.md file for previous work
-- [x] Identify timeout causes in GraphQL resolvers
-
-## Implementation
-- [x] Implement timeout handling in resolver functions
-- [x] Add caching for expensive queries
-- [x] Optimize database operations
-- [x] Improve error handling
-- [x] Add proper indexing for frequently queried fields
-
-## Testing
-- [ ] Test changes locally
-- [ ] Verify all existing functionality works
-- [ ] Check performance improvements
-
-## Documentation
-- [ ] Update PROGRESS.md file
-- [ ] Commit and push changes
+## Database Seeding Script Implementation
+- [x] Clone repository and analyze progress
+- [x] Review project structure and requirements
+- [x] Decide between scraper or seeding script
+- [ ] Create comprehensive database seeding script with mock data
+- [ ] Test complete user flow with seeded data
+- [ ] Verify local test suite compatibility with Vercel
+- [ ] Update PROGRESS.md file and commit changes
