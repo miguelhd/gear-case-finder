@@ -76,9 +76,9 @@ export class ApiManager {
       ...options
     };
     
-    // Initialize API clients
-    this.canopyClient = new CanopyApiClient({ apiKey: this.options.canopyApiKey });
-    this.reverbClient = new ReverbApiClient({ accessToken: this.options.reverbAccessToken });
+    // Initialize API clients - ensure we always pass a string, not undefined
+    this.canopyClient = new CanopyApiClient({ apiKey: this.options.canopyApiKey || '' });
+    this.reverbClient = new ReverbApiClient({ accessToken: this.options.reverbAccessToken || '' });
     
     // Initialize cache service
     this.cacheService = new ApiCacheService();
@@ -100,8 +100,8 @@ export class ApiManager {
     // Initialize batch processing system if enabled
     if (this.options.enableBatchProcessing) {
       this.batchProcessingSystem = new BatchProcessingSystem({
-        canopyApiKey: this.options.canopyApiKey,
-        reverbAccessToken: this.options.reverbAccessToken
+        canopyApiKey: this.options.canopyApiKey || '',
+        reverbAccessToken: this.options.reverbAccessToken || ''
       });
     }
   }
@@ -177,11 +177,11 @@ export class ApiManager {
           canopyResults = await this.cacheService.cacheApiCall(
             'canopy_search_audio_gear',
             { query, options },
-            () => this.canopyClient.searchAudioGear(query, options.limit || 10, options.page || 1),
+            () => this.canopyClient.searchAudioGear(query, options.limit || 10),
             { ttl: 3600, namespace: 'audio_gear' }
           );
         } else {
-          canopyResults = await this.canopyClient.searchAudioGear(query, options.limit || 10, options.page || 1);
+          canopyResults = await this.canopyClient.searchAudioGear(query, options.limit || 10);
         }
         
         this.logger.info(`Found ${canopyResults.products?.length || 0} audio gear results from Canopy API`);
@@ -215,14 +215,14 @@ export class ApiManager {
           reverbResults = await this.cacheService.cacheApiCall(
             'reverb_search_audio_gear',
             { query, options },
-            () => this.reverbClient.searchAudioGear(query, options.limit || 10, options.page || 1),
+            () => this.reverbClient.searchAudioGear(query, options.limit || 10),
             { ttl: 3600, namespace: 'audio_gear' }
           );
         } else {
-          reverbResults = await this.reverbClient.searchAudioGear(query, options.limit || 10, options.page || 1);
+          reverbResults = await this.reverbClient.searchAudioGear(query, options.limit || 10);
         }
         
-        this.logger.info(`Found ${reverbResults.products?.length || 0} audio gear results from Reverb API`);
+        this.logger.info(`Found ${reverbResults.listings?.length || 0} audio gear results from Reverb API`);
         
         // Process the results
         const processedResults = processReverbResults(reverbResults);
@@ -242,8 +242,8 @@ export class ApiManager {
     
     searchPromises.push(reverbPromise);
     
-    // Wait for all searches to complete
-    await Promise.allSettled(searchPromises);
+    // Wait for all search promises to complete
+    await Promise.all(searchPromises);
     
     return allResults;
   }
@@ -266,11 +266,11 @@ export class ApiManager {
           canopyResults = await this.cacheService.cacheApiCall(
             'canopy_search_cases',
             { query, options },
-            () => this.canopyClient.searchCases(query, options.limit || 10, options.page || 1),
+            () => this.canopyClient.searchCases(query, options.limit || 10),
             { ttl: 3600, namespace: 'cases' }
           );
         } else {
-          canopyResults = await this.canopyClient.searchCases(query, options.limit || 10, options.page || 1);
+          canopyResults = await this.canopyClient.searchCases(query, options.limit || 10);
         }
         
         this.logger.info(`Found ${canopyResults.products?.length || 0} case results from Canopy API`);
@@ -304,14 +304,14 @@ export class ApiManager {
           reverbResults = await this.cacheService.cacheApiCall(
             'reverb_search_cases',
             { query, options },
-            () => this.reverbClient.searchCases(query, options.limit || 10, options.page || 1),
+            () => this.reverbClient.searchCases(query, options.limit || 10),
             { ttl: 3600, namespace: 'cases' }
           );
         } else {
-          reverbResults = await this.reverbClient.searchCases(query, options.limit || 10, options.page || 1);
+          reverbResults = await this.reverbClient.searchCases(query, options.limit || 10);
         }
         
-        this.logger.info(`Found ${reverbResults.products?.length || 0} case results from Reverb API`);
+        this.logger.info(`Found ${reverbResults.listings?.length || 0} case results from Reverb API`);
         
         // Process the results
         const processedResults = processReverbResults(reverbResults);
@@ -331,436 +331,336 @@ export class ApiManager {
     
     searchPromises.push(reverbPromise);
     
-    // Wait for all searches to complete
-    await Promise.allSettled(searchPromises);
+    // Wait for all search promises to complete
+    await Promise.all(searchPromises);
     
     return allResults;
   }
   
   /**
-   * Get audio gear details by ID from a specific API source
+   * Get audio gear details from a specific source
    */
   async getAudioGearDetails(source: string, productId: string): Promise<IAudioGear | null> {
-    if (!this.apiSources.has(source)) {
-      this.logger.error(`Unknown API source: ${source}`);
-      return null;
-    }
-    
     try {
-      let result;
+      this.logger.info(`Getting audio gear details from ${source} for product ID: ${productId}`);
+      
+      // Try to get from cache first if caching is enabled
+      if (this.options.enableCaching) {
+        const cachedResult = await this.cacheService.get(`${source}_audio_gear_${productId}`, 'audio_gear');
+        if (cachedResult) {
+          this.logger.info(`Found cached audio gear details for ${productId}`);
+          return cachedResult as IAudioGear;
+        }
+      }
+      
+      let result: IAudioGear | null = null;
       
       if (source === 'canopy') {
-        // Try to get from cache first if caching is enabled
-        if (this.options.enableCaching) {
-          result = await this.cacheService.cacheApiCall(
-            'canopy_audio_gear_details',
-            { productId },
-            () => this.canopyClient.getProduct(productId),
-            { ttl: 86400, namespace: 'audio_gear_details' }
-          );
-        } else {
-          result = await this.canopyClient.getProduct(productId);
-        }
-        
-        // Process the result
-        const processedResults = processCanopyResults({ products: [result] });
-        
-        if (processedResults.audioGear.length > 0) {
-          // Process the result (download images and save to database)
-          const finalResult = await this.processAudioGearResult(processedResults.audioGear[0], source);
-          
-          // Save the result to disk
-          await this.saveResults([finalResult], `product_${source}_${productId}`);
-          
-          return finalResult;
+        const canopyResult = await this.canopyClient.getProduct(productId);
+        if (canopyResult) {
+          const processedResults = processCanopyResults({ products: [canopyResult] });
+          if (processedResults.audioGear.length > 0) {
+            result = processedResults.audioGear[0];
+            if (result) {
+              result.marketplace = source;
+            }
+          }
         }
       } else if (source === 'reverb') {
-        // Try to get from cache first if caching is enabled
-        if (this.options.enableCaching) {
-          result = await this.cacheService.cacheApiCall(
-            'reverb_audio_gear_details',
-            { productId },
-            () => this.reverbClient.getProduct(productId),
-            { ttl: 86400, namespace: 'audio_gear_details' }
+        const reverbResult = await this.reverbClient.getItem(productId);
+        if (reverbResult) {
+          const processedResults = processReverbResults({ listings: [reverbResult] });
+          if (processedResults.audioGear.length > 0) {
+            result = processedResults.audioGear[0];
+            if (result) {
+              result.marketplace = source;
+            }
+          }
+        }
+      }
+      
+      if (result) {
+        // Process the result (download images and save to database)
+        const finalResults = await this.processAudioGearResults([result], source);
+        
+        // Cache the result if caching is enabled
+        if (this.options.enableCaching && finalResults.length > 0) {
+          await this.cacheService.set(
+            `${source}_audio_gear_${productId}`, 
+            finalResults[0], 
+            'audio_gear', 
+            { ttl: 86400 } // 24 hours
           );
-        } else {
-          result = await this.reverbClient.getProduct(productId);
         }
         
-        // Process the result
-        const processedResults = processReverbResults({ products: [result] });
-        
-        if (processedResults.audioGear.length > 0) {
-          // Process the result (download images and save to database)
-          const finalResult = await this.processAudioGearResult(processedResults.audioGear[0], source);
-          
-          // Save the result to disk
-          await this.saveResults([finalResult], `product_${source}_${productId}`);
-          
-          return finalResult;
-        }
+        return finalResults.length > 0 ? finalResults[0] : null;
       }
       
       return null;
     } catch (error) {
-      this.logger.error(`Error getting audio gear details from ${source}:`, error);
+      this.logger.error(`Error getting audio gear details from ${source} for product ID ${productId}:`, error);
       return null;
     }
   }
   
   /**
-   * Get case details by ID from a specific API source
+   * Get case details from a specific source
    */
   async getCaseDetails(source: string, productId: string): Promise<ICase | null> {
-    if (!this.apiSources.has(source)) {
-      this.logger.error(`Unknown API source: ${source}`);
-      return null;
-    }
-    
     try {
-      let result;
+      this.logger.info(`Getting case details from ${source} for product ID: ${productId}`);
+      
+      // Try to get from cache first if caching is enabled
+      if (this.options.enableCaching) {
+        const cachedResult = await this.cacheService.get(`${source}_case_${productId}`, 'cases');
+        if (cachedResult) {
+          this.logger.info(`Found cached case details for ${productId}`);
+          return cachedResult as ICase;
+        }
+      }
+      
+      let result: ICase | null = null;
       
       if (source === 'canopy') {
-        // Try to get from cache first if caching is enabled
-        if (this.options.enableCaching) {
-          result = await this.cacheService.cacheApiCall(
-            'canopy_case_details',
-            { productId },
-            () => this.canopyClient.getProduct(productId),
-            { ttl: 86400, namespace: 'case_details' }
-          );
-        } else {
-          result = await this.canopyClient.getProduct(productId);
-        }
-        
-        // Process the result
-        const processedResults = processCanopyResults({ products: [result] });
-        
-        if (processedResults.cases.length > 0) {
-          // Process the result (download images and save to database)
-          const finalResult = await this.processCaseResult(processedResults.cases[0], source);
-          
-          // Save the result to disk
-          await this.saveResults([finalResult], `case_${source}_${productId}`);
-          
-          return finalResult;
+        const canopyResult = await this.canopyClient.getProduct(productId);
+        if (canopyResult) {
+          const processedResults = processCanopyResults({ products: [canopyResult] });
+          if (processedResults.cases.length > 0) {
+            result = processedResults.cases[0];
+            if (result) {
+              result.marketplace = source;
+            }
+          }
         }
       } else if (source === 'reverb') {
-        // Try to get from cache first if caching is enabled
-        if (this.options.enableCaching) {
-          result = await this.cacheService.cacheApiCall(
-            'reverb_case_details',
-            { productId },
-            () => this.reverbClient.getProduct(productId),
-            { ttl: 86400, namespace: 'case_details' }
+        const reverbResult = await this.reverbClient.getItem(productId);
+        if (reverbResult) {
+          const processedResults = processReverbResults({ listings: [reverbResult] });
+          if (processedResults.cases.length > 0) {
+            result = processedResults.cases[0];
+            if (result) {
+              result.marketplace = source;
+            }
+          }
+        }
+      }
+      
+      if (result) {
+        // Process the result (download images and save to database)
+        const finalResults = await this.processCaseResults([result], source);
+        
+        // Cache the result if caching is enabled
+        if (this.options.enableCaching && finalResults.length > 0) {
+          await this.cacheService.set(
+            `${source}_case_${productId}`, 
+            finalResults[0], 
+            'cases', 
+            { ttl: 86400 } // 24 hours
           );
-        } else {
-          result = await this.reverbClient.getProduct(productId);
         }
         
-        // Process the result
-        const processedResults = processReverbResults({ products: [result] });
-        
-        if (processedResults.cases.length > 0) {
-          // Process the result (download images and save to database)
-          const finalResult = await this.processCaseResult(processedResults.cases[0], source);
-          
-          // Save the result to disk
-          await this.saveResults([finalResult], `case_${source}_${productId}`);
-          
-          return finalResult;
-        }
+        return finalResults.length > 0 ? finalResults[0] : null;
       }
       
       return null;
     } catch (error) {
-      this.logger.error(`Error getting case details from ${source}:`, error);
+      this.logger.error(`Error getting case details from ${source} for product ID ${productId}:`, error);
       return null;
     }
   }
   
   /**
-   * Process a single audio gear result (download images and save to database)
+   * Process audio gear results (download images and save to database)
    */
-  private async processAudioGearResult(audioGear: IAudioGear, source: string): Promise<IAudioGear> {
-    try {
-      // Clone the audio gear to avoid modifying the original
-      const processedAudioGear = { ...audioGear };
-      
-      // Set marketplace
-      processedAudioGear.marketplace = source;
-      
-      // Download images if enabled
-      if (this.options.downloadImages && this.imageDownloader && processedAudioGear.imageUrl) {
-        this.logger.info(`Downloading image for audio gear ${processedAudioGear.name}`);
-        const localImagePaths = await this.imageDownloader.downloadImages(
-          [processedAudioGear.imageUrl],
-          source,
-          processedAudioGear._id?.toString() || processedAudioGear.name
-        );
-        
-        if (localImagePaths.length > 0) {
-          this.logger.info(`Successfully downloaded image for audio gear ${processedAudioGear.name}`);
-          processedAudioGear.imageUrl = localImagePaths[0];
-        } else {
-          this.logger.warn(`Failed to download image for audio gear ${processedAudioGear.name}`);
-        }
-      }
-      
-      // Save to database if enabled
-      if (this.options.saveToDatabase) {
-        this.logger.info(`Saving audio gear ${processedAudioGear.name} to database`);
-        
-        try {
-          // Connect to MongoDB if not already connected
-          if (mongoose.connection.readyState !== 1) {
-            await mongoose.connect(this.options.mongodbUri || '');
-          }
-          
-          // Get the AudioGear model
-          const AudioGearModel = mongoose.model('AudioGear');
-          
-          // Check if audio gear already exists
-          const existingAudioGear = await AudioGearModel.findOne({
-            name: processedAudioGear.name,
-            brand: processedAudioGear.brand,
-            marketplace: source
-          });
-          
-          if (existingAudioGear) {
-            // Update existing audio gear
-            await AudioGearModel.updateOne(
-              { _id: existingAudioGear._id },
-              { $set: processedAudioGear }
-            );
-            
-            this.logger.info(`Successfully updated audio gear ${processedAudioGear.name} in database`);
-          } else {
-            // Create new audio gear
-            const newAudioGear = new AudioGearModel(processedAudioGear);
-            await newAudioGear.save();
-            
-            this.logger.info(`Successfully saved audio gear ${processedAudioGear.name} to database`);
-          }
-        } catch (error) {
-          this.logger.error(`Error saving audio gear ${processedAudioGear.name} to database:`, error);
-        }
-      }
-      
-      return processedAudioGear;
-    } catch (error) {
-      this.logger.error(`Error processing audio gear ${audioGear.name}:`, error);
-      return audioGear; // Return original audio gear if processing fails
-    }
-  }
-  
-  /**
-   * Process multiple audio gear results (download images and save to database)
-   */
-  private async processAudioGearResults(audioGearItems: IAudioGear[], source: string): Promise<IAudioGear[]> {
-    const processedAudioGearItems: IAudioGear[] = [];
+  private async processAudioGearResults(results: IAudioGear[], source: string): Promise<IAudioGear[]> {
+    const processedResults: IAudioGear[] = [];
     
-    for (const audioGear of audioGearItems) {
+    for (const audioGear of results) {
       try {
-        const processedAudioGear = await this.processAudioGearResult(audioGear, source);
-        processedAudioGearItems.push(processedAudioGear);
+        // Set the marketplace source
+        audioGear.marketplace = source;
+        
+        // Download images if enabled
+        if (this.options.downloadImages && this.imageDownloader && audioGear.imageUrl) {
+          try {
+            const localImagePath = await this.imageDownloader.downloadImage(audioGear.imageUrl, `audio_gear_${audioGear._id}`);
+            if (localImagePath) {
+              audioGear.imageUrl = localImagePath;
+            }
+          } catch (error) {
+            this.logger.error(`Error downloading image for audio gear ${audioGear._id}:`, error);
+            // Continue with original image URL
+          }
+        }
+        
+        // Save to database if enabled
+        if (this.options.saveToDatabase) {
+          try {
+            // Connect to MongoDB if not already connected
+            if (mongoose.connection.readyState !== 1) {
+              await mongoose.connect(this.options.mongodbUri || '');
+            }
+            
+            // Import the AudioGear model
+            const { AudioGear } = await import('../models/gear-models');
+            
+            // Check if the audio gear already exists
+            const existingAudioGear = await AudioGear.findOne({ 
+              name: audioGear.name,
+              brand: audioGear.brand
+            });
+            
+            if (existingAudioGear) {
+              // Update existing audio gear
+              await AudioGear.updateOne(
+                { _id: existingAudioGear._id },
+                { $set: audioGear }
+              );
+              
+              // Use the existing ID
+              audioGear._id = existingAudioGear._id;
+            } else {
+              // Create new audio gear
+              const newAudioGear = new AudioGear(audioGear);
+              await newAudioGear.save();
+              
+              // Use the new ID
+              audioGear._id = newAudioGear._id;
+            }
+          } catch (error) {
+            this.logger.error(`Error saving audio gear to database:`, error);
+            // Continue without saving to database
+          }
+        }
+        
+        processedResults.push(audioGear);
       } catch (error) {
-        this.logger.error(`Error processing audio gear ${audioGear.name}:`, error);
-        processedAudioGearItems.push(audioGear); // Add original audio gear if processing fails
+        this.logger.error(`Error processing audio gear:`, error);
+        // Skip this audio gear and continue with others
       }
     }
     
-    return processedAudioGearItems;
+    return processedResults;
   }
   
   /**
-   * Process a single case result (download images and save to database)
+   * Process case results (download images and save to database)
    */
-  private async processCaseResult(caseItem: ICase, source: string): Promise<ICase> {
-    try {
-      // Clone the case to avoid modifying the original
-      const processedCase = { ...caseItem };
-      
-      // Set marketplace
-      processedCase.marketplace = source;
-      
-      // Ensure internalDimensions is set (for backward compatibility)
-      if (!processedCase.internalDimensions && processedCase.dimensions?.interior) {
-        processedCase.internalDimensions = { ...processedCase.dimensions.interior };
-      }
-      
-      // Ensure externalDimensions is set (for backward compatibility)
-      if (!processedCase.externalDimensions && processedCase.dimensions?.exterior) {
-        processedCase.externalDimensions = { ...processedCase.dimensions.exterior };
-      }
-      
-      // Download images if enabled
-      if (this.options.downloadImages && this.imageDownloader) {
-        const imageUrls = processedCase.imageUrls || (processedCase.imageUrl ? [processedCase.imageUrl] : []);
-        
-        if (imageUrls.length > 0) {
-          this.logger.info(`Downloading ${imageUrls.length} images for case ${processedCase.name}`);
-          const localImagePaths = await this.imageDownloader.downloadImages(
-            imageUrls,
-            source,
-            processedCase._id?.toString() || processedCase.name
-          );
-          
-          if (localImagePaths.length > 0) {
-            this.logger.info(`Successfully downloaded ${localImagePaths.length} images for case ${processedCase.name}`);
-            processedCase.imageUrls = localImagePaths;
-            processedCase.imageUrl = localImagePaths[0];
-          } else {
-            this.logger.warn(`Failed to download any images for case ${processedCase.name}`);
-          }
-        }
-      }
-      
-      // Save to database if enabled
-      if (this.options.saveToDatabase) {
-        this.logger.info(`Saving case ${processedCase.name} to database`);
-        
-        try {
-          // Connect to MongoDB if not already connected
-          if (mongoose.connection.readyState !== 1) {
-            await mongoose.connect(this.options.mongodbUri || '');
-          }
-          
-          // Get the Case model
-          const CaseModel = mongoose.model('Case');
-          
-          // Check if case already exists
-          const existingCase = await CaseModel.findOne({
-            name: processedCase.name,
-            brand: processedCase.brand,
-            marketplace: source
-          });
-          
-          if (existingCase) {
-            // Update existing case
-            await CaseModel.updateOne(
-              { _id: existingCase._id },
-              { $set: processedCase }
-            );
-            
-            this.logger.info(`Successfully updated case ${processedCase.name} in database`);
-          } else {
-            // Create new case
-            const newCase = new CaseModel(processedCase);
-            await newCase.save();
-            
-            this.logger.info(`Successfully saved case ${processedCase.name} to database`);
-          }
-        } catch (error) {
-          this.logger.error(`Error saving case ${processedCase.name} to database:`, error);
-        }
-      }
-      
-      return processedCase;
-    } catch (error) {
-      this.logger.error(`Error processing case ${caseItem.name}:`, error);
-      return caseItem; // Return original case if processing fails
-    }
-  }
-  
-  /**
-   * Process multiple case results (download images and save to database)
-   */
-  private async processCaseResults(caseItems: ICase[], source: string): Promise<ICase[]> {
-    const processedCaseItems: ICase[] = [];
+  private async processCaseResults(results: ICase[], source: string): Promise<ICase[]> {
+    const processedResults: ICase[] = [];
     
-    for (const caseItem of caseItems) {
+    for (const caseItem of results) {
       try {
-        const processedCase = await this.processCaseResult(caseItem, source);
-        processedCaseItems.push(processedCase);
+        // Set the marketplace source
+        caseItem.marketplace = source;
+        
+        // Download images if enabled
+        if (this.options.downloadImages && this.imageDownloader && caseItem.imageUrl) {
+          try {
+            const localImagePath = await this.imageDownloader.downloadImage(caseItem.imageUrl, `case_${caseItem._id}`);
+            if (localImagePath) {
+              caseItem.imageUrl = localImagePath;
+            }
+          } catch (error) {
+            this.logger.error(`Error downloading image for case ${caseItem._id}:`, error);
+            // Continue with original image URL
+          }
+        }
+        
+        // Save to database if enabled
+        if (this.options.saveToDatabase) {
+          try {
+            // Connect to MongoDB if not already connected
+            if (mongoose.connection.readyState !== 1) {
+              await mongoose.connect(this.options.mongodbUri || '');
+            }
+            
+            // Import the Case model
+            const { Case } = await import('../models/gear-models');
+            
+            // Check if the case already exists
+            const existingCase = await Case.findOne({ 
+              name: caseItem.name,
+              brand: caseItem.brand
+            });
+            
+            if (existingCase) {
+              // Update existing case
+              await Case.updateOne(
+                { _id: existingCase._id },
+                { $set: caseItem }
+              );
+              
+              // Use the existing ID
+              caseItem._id = existingCase._id;
+            } else {
+              // Create new case
+              const newCase = new Case(caseItem);
+              await newCase.save();
+              
+              // Use the new ID
+              caseItem._id = newCase._id;
+            }
+          } catch (error) {
+            this.logger.error(`Error saving case to database:`, error);
+            // Continue without saving to database
+          }
+        }
+        
+        processedResults.push(caseItem);
       } catch (error) {
-        this.logger.error(`Error processing case ${caseItem.name}:`, error);
-        processedCaseItems.push(caseItem); // Add original case if processing fails
+        this.logger.error(`Error processing case:`, error);
+        // Skip this case and continue with others
       }
     }
     
-    return processedCaseItems;
+    return processedResults;
   }
   
   /**
    * Save results to disk
    */
-  private async saveResults(results: any[], filePrefix: string) {
+  private async saveResults(results: any[], filename: string): Promise<void> {
     try {
       // Ensure data directory exists
-      await fs.mkdir(this.options.dataDirectory || '/tmp/data', { recursive: true });
+      await fs.mkdir(this.options.dataDirectory || './data', { recursive: true });
       
-      // Create a timestamped filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = path.join(this.options.dataDirectory || '/tmp/data', `${filePrefix}_${timestamp}.json`);
+      // Save results to disk
+      const filePath = path.join(this.options.dataDirectory || './data', `${filename}.json`);
+      await fs.writeFile(filePath, JSON.stringify(results, null, 2));
       
-      // Write the results to disk
-      await fs.writeFile(filename, JSON.stringify(results, null, 2));
-      this.logger.info(`Saved ${results.length} results to ${filename}`);
+      this.logger.info(`Saved results to ${filePath}`);
     } catch (error) {
-      this.logger.error(`Error saving results:`, error);
+      this.logger.error(`Error saving results to disk:`, error);
+      // Continue without saving to disk
     }
   }
   
   /**
-   * Utility function to retry operations with exponential backoff
+   * Retry a function with exponential backoff
    */
   private async withRetry<T>(
-    operation: () => Promise<T>,
+    fn: () => Promise<T>,
     maxRetries: number = 3,
-    initialDelay: number = 1000
+    delayMs: number = 1000
   ): Promise<T> {
-    let lastError: Error = new Error("Operation failed");
-    let delay = initialDelay;
+    let lastError: any;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await operation();
+        return await fn();
       } catch (error) {
-        lastError = error as Error;
-        this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms...`, error);
+        lastError = error;
         
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        // Exponential backoff
-        delay *= 2;
+        if (attempt < maxRetries) {
+          const delay = delayMs * Math.pow(2, attempt - 1);
+          this.logger.warn(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
     }
     
-    this.logger.error(`Operation failed after ${maxRetries} attempts`);
     throw lastError;
-  }
-  
-  /**
-   * Schedule a job to run at regular intervals
-   */
-  scheduleJob(
-    jobName: string,
-    operation: () => Promise<void>,
-    intervalMinutes: number
-  ) {
-    this.logger.info(`Scheduling job "${jobName}" to run every ${intervalMinutes} minutes`);
-    
-    // Run immediately
-    operation().catch(error => {
-      this.logger.error(`Error running scheduled job "${jobName}":`, error);
-    });
-    
-    // Then schedule for regular execution
-    const intervalMs = intervalMinutes * 60 * 1000;
-    const intervalId = setInterval(() => {
-      operation().catch(error => {
-        this.logger.error(`Error running scheduled job "${jobName}":`, error);
-      });
-    }, intervalMs);
-    
-    return {
-      stop: () => {
-        clearInterval(intervalId);
-        this.logger.info(`Stopped scheduled job "${jobName}"`);
-      }
-    };
   }
   
   /**
@@ -771,7 +671,7 @@ export class ApiManager {
       throw new Error('Batch processing system is not enabled');
     }
     
-    await this.batchProcessingSystem.runManualBatchJob(jobType);
+    await this.batchProcessingSystem.runJob(jobType);
   }
   
   /**
@@ -779,10 +679,10 @@ export class ApiManager {
    */
   async getBatchJobHistory(limit: number = 10): Promise<any[]> {
     if (!this.batchProcessingSystem) {
-      throw new Error('Batch processing system is not enabled');
+      return [];
     }
     
-    return await this.batchProcessingSystem.getBatchJobHistory(limit);
+    return await this.batchProcessingSystem.getJobHistory(limit);
   }
   
   /**
@@ -790,11 +690,24 @@ export class ApiManager {
    */
   async getCacheStats(): Promise<any> {
     if (!this.options.enableCaching) {
-      throw new Error('Caching is not enabled');
+      return { enabled: false };
     }
     
     return await this.cacheService.getStats();
   }
+  
+  /**
+   * Schedule a job to run at regular intervals
+   */
+  scheduleJob(
+    jobName: string,
+    operation: () => Promise<void>,
+    intervalMinutes: number
+  ) {
+    if (!this.batchProcessingSystem) {
+      throw new Error('Batch processing system is not enabled');
+    }
+    
+    return this.batchProcessingSystem.scheduleJob(jobName, operation, intervalMinutes);
+  }
 }
-
-export default ApiManager;
