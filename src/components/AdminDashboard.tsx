@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { getCacheStats } from '../lib/cache';
 
 const AdminDashboard = () => {
-  const [systemHealth, setSystemHealth] = useState<any>(null);
   const [cacheStats, setCacheStats] = useState<any>(null);
   const [databaseStats, setDatabaseStats] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -15,22 +14,19 @@ const AdminDashboard = () => {
       try {
         setLoading(true);
         
-        // Fetch data from API endpoints
-        const [systemResponse, cacheResponse, dbResponse] = await Promise.all([
-          fetch('/api/admin/system-health'),
+        // Fetch data from API endpoints - only fetch from endpoints that actually exist
+        const [cacheResponse, dbResponse] = await Promise.all([
           fetch('/api/admin/cache-stats'),
           fetch('/api/admin/database-stats')
         ]);
         
-        if (!systemResponse.ok || !cacheResponse.ok || !dbResponse.ok) {
+        if (!cacheResponse.ok || !dbResponse.ok) {
           throw new Error('Failed to fetch dashboard data');
         }
         
-        const systemData = await systemResponse.json();
         const cacheData = await cacheResponse.json();
         const dbData = await dbResponse.json();
         
-        setSystemHealth(systemData);
         setCacheStats(cacheData);
         setDatabaseStats(dbData);
       } catch (err) {
@@ -52,22 +48,19 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch data from API endpoints
-      const [systemResponse, cacheResponse, dbResponse] = await Promise.all([
-        fetch('/api/admin/system-health'),
+      // Fetch data from API endpoints - only fetch from endpoints that actually exist
+      const [cacheResponse, dbResponse] = await Promise.all([
         fetch('/api/admin/cache-stats'),
         fetch('/api/admin/database-stats')
       ]);
       
-      if (!systemResponse.ok || !cacheResponse.ok || !dbResponse.ok) {
+      if (!cacheResponse.ok || !dbResponse.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
       
-      const systemData = await systemResponse.json();
       const cacheData = await cacheResponse.json();
       const dbData = await dbResponse.json();
       
-      setSystemHealth(systemData);
       setCacheStats(cacheData);
       setDatabaseStats(dbData);
       setError(null);
@@ -97,7 +90,7 @@ const AdminDashboard = () => {
     }
   };
   
-  if (loading && !systemHealth) {
+  if (loading && (!cacheStats || !databaseStats)) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -178,25 +171,8 @@ const AdminDashboard = () => {
       </div>
       
       {/* Overview Tab */}
-      {activeTab === 'overview' && systemHealth && cacheStats && databaseStats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* System Status Card */}
-          <div className={`p-6 rounded-lg shadow-md ${
-            systemHealth.status === 'healthy' ? 'bg-green-50 border border-green-200' :
-            systemHealth.status === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
-            'bg-red-50 border border-red-200'
-          }`}>
-            <h2 className="text-xl font-semibold mb-4">System Status</h2>
-            <div className="flex items-center mb-4">
-              <div className={`w-4 h-4 rounded-full mr-2 ${
-                systemHealth.status === 'healthy' ? 'bg-green-500' :
-                systemHealth.status === 'warning' ? 'bg-yellow-500' :
-                'bg-red-500'
-              }`}></div>
-              <span className="capitalize">{systemHealth.status}</span>
-            </div>
-            <p className="text-sm text-gray-600">Last Updated: {new Date(systemHealth.lastUpdated).toLocaleString()}</p>
-          </div>
+      {activeTab === 'overview' && cacheStats && databaseStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Database Stats Card */}
           <div className="p-6 bg-white rounded-lg shadow-md border border-gray-200">
