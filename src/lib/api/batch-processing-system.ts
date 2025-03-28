@@ -80,7 +80,7 @@ export class BatchProcessingSystem {
       
       // Create indexes if they don't exist
       const indexes = await collection.indexes();
-      const indexNames = indexes.map(index => index.name);
+      const indexNames = indexes.map(index => index['name']);
       
       if (!indexNames.includes('jobType_1')) {
         await collection.createIndex({ jobType: 1 });
@@ -111,7 +111,7 @@ export class BatchProcessingSystem {
    */
   private startScheduledJobs(): void {
     // Product refresh job
-    this.jobs.productRefresh = new CronJob(
+    this.jobs['productRefresh'] = new CronJob(
       this.config.schedules?.productRefresh || '0 0 * * *',
       () => this.refreshProductData(),
       null,
@@ -119,7 +119,7 @@ export class BatchProcessingSystem {
     );
     
     // Dimension refresh job
-    this.jobs.dimensionRefresh = new CronJob(
+    this.jobs['dimensionRefresh'] = new CronJob(
       this.config.schedules?.dimensionRefresh || '0 0 1 * *',
       () => this.refreshDimensionData(),
       null,
@@ -127,7 +127,7 @@ export class BatchProcessingSystem {
     );
     
     // Price refresh job
-    this.jobs.priceRefresh = new CronJob(
+    this.jobs['priceRefresh'] = new CronJob(
       this.config.schedules?.priceRefresh || '0 */12 * * *',
       () => this.refreshPriceData(),
       null,
