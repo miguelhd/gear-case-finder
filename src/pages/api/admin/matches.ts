@@ -68,14 +68,21 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
       
     // Then filter them based on search term
     const filteredIds = allMatches
-      .filter(match => 
-        match.gear.name.toLowerCase().includes(search.toLowerCase()) ||
-        match.gear.brand.toLowerCase().includes(search.toLowerCase()) ||
-        match.gear.type.toLowerCase().includes(search.toLowerCase()) ||
-        match.case.name.toLowerCase().includes(search.toLowerCase()) ||
-        match.case.brand.toLowerCase().includes(search.toLowerCase()) ||
-        match.case.type.toLowerCase().includes(search.toLowerCase())
-      )
+      .filter(match => {
+        const gear = typeof match.gearId === 'object' && match.gearId ? match.gearId as any : null;
+        const caseItem = typeof match.caseId === 'object' && match.caseId ? match.caseId as any : null;
+        
+        if (!gear || !caseItem) return false;
+        
+        return (
+          gear.name.toLowerCase().includes(search.toLowerCase()) ||
+          gear.brand.toLowerCase().includes(search.toLowerCase()) ||
+          gear.type.toLowerCase().includes(search.toLowerCase()) ||
+          caseItem.name.toLowerCase().includes(search.toLowerCase()) ||
+          caseItem.brand.toLowerCase().includes(search.toLowerCase()) ||
+          caseItem.type.toLowerCase().includes(search.toLowerCase())
+        );
+      })
       .map(match => match._id);
       
     // Add these IDs to the query

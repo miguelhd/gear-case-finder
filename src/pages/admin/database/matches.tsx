@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { IGearCaseMatch } from '../../../lib/models/gear-models';
+import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/ui/StatusComponents';
 
 // Component for the Match Management page
 const MatchManagementPage = () => {
@@ -66,8 +67,8 @@ const MatchManagementPage = () => {
         setMatches(data.items);
         setTotalItems(data.total);
         setLoading(false);
-      } catch (err) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }
     };
@@ -250,19 +251,39 @@ const MatchManagementPage = () => {
       }
     ];
     
-    // Use mock data for now
-    setMatches(mockData as any);
-    setTotalItems(mockData.length);
-    setLoading(false);
-    
     // Extract unique gear and case types for filters
-    const uniqueGearTypes = [...new Set(mockData.map(item => item.gear.type))];
-    const uniqueCaseTypes = [...new Set(mockData.map(item => item.case.type))];
-    setGearTypes(uniqueGearTypes);
-    setCaseTypes(uniqueCaseTypes);
+    const fetchGearAndCaseTypes = async () => {
+      try {
+        const response = await fetch('/api/admin/matches/gear-case-types');
+        if (!response.ok) {
+          throw new Error('Failed to fetch gear and case types');
+        }
+        const data = await response.json();
+        setGearTypes(data.gearTypes);
+        setCaseTypes(data.caseTypes);
+      } catch (err) {
+        console.error('Error fetching gear and case types:', err);
+        // Fallback to extracting from current items if API fails
+        const uniqueGearTypes = [...new Set(matches.map(item => 
+          typeof item.gearId === 'object' && item.gearId && 'type' in item.gearId 
+            ? (item.gearId as any).type 
+            : 'Unknown'
+        ))];
+        const uniqueCaseTypes = [...new Set(matches.map(item => 
+          typeof item.caseId === 'object' && item.caseId && 'type' in item.caseId 
+            ? (item.caseId as any).type 
+            : 'Unknown'
+        ))];
+        setGearTypes(uniqueGearTypes);
+        setCaseTypes(uniqueCaseTypes);
+      }
+    };
+
+    // Fetch match data
+    fetchMatches();
     
-    // Uncomment this when the API endpoint is implemented
-    // fetchMatches();
+    // Fetch gear and case types for filters
+    fetchGearAndCaseTypes();
   }, [currentPage, itemsPerPage, searchTerm, filterGearType, filterCaseType, minScore, maxScore, sortField, sortDirection]);
   
   // Handle page change
@@ -372,7 +393,7 @@ const MatchManagementPage = () => {
   const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
   
   // Generate page numbers for pagination
-  const pageNumbers = [];
+  const pageNumbers: (number | string)[] = [];
   const maxPageButtons = 5;
   
   if (totalPages <= maxPageButtons) {
@@ -572,27 +593,15 @@ const MatchManagementPage = () => {
       {/* Match Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         {loading ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">Loading match data...</p>
-          </div>
+          <LoadingSpinner />
         ) : error ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="h-8 w-8 text-red-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p className="mt-2 text-sm text-red-500">{error}</p>
-          </div>
+          <ErrorMessage message={error} />
         ) : matches.length === 0 ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">No matches found. Try adjusting your filters or run the matching algorithm.</p>
-          </div>
+          <EmptyState 
+            message="No matches found. Try adjusting your filters or run the matching algorithm."
+            actionLabel="Run Matching"
+            onAction={handleRunMatching}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -664,21 +673,26 @@ const MatchManagementPage = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {matches.map((match) => (
+                {matches.map((match) => {
+                  // Handle populated or non-populated gear/case references
+                  const gear = typeof match.gearId === 'object' && match.gearId ? match.gearId as any : { name: 'Unknown', brand: 'Unknown', type: 'Unknown' };
+                  const caseItem = typeof match.caseId === 'object' && match.caseId ? match.caseId as any : { name: 'Unknown', brand: 'Unknown', type: 'Unknown' };
+                  
+                  return (
                   <tr key={match._id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{match.gear.name}</div>
-                          <div className="text-sm text-gray-500">{match.gear.brand} • {match.gear.type}</div>
+                          <div className="text-sm font-medium text-gray-900">{gear.name}</div>
+                          <div className="text-sm text-gray-500">{gear.brand} • {gear.type}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{match.case.name}</div>
-                          <div className="text-sm text-gray-500">{match.case.brand} • {match.case.type}</div>
+                          <div className="text-sm font-medium text-gray-900">{caseItem.name}</div>
+                          <div className="text-sm text-gray-500">{caseItem.brand} • {caseItem.type}</div>
                         </div>
                       </div>
                     </td>
@@ -693,9 +707,9 @@ const MatchManagementPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center">
-                        <span className="text-green-500 mr-1">+{match.positiveFeedbackCount}</span>
+                        <span className="text-green-500 mr-1">+{match.positiveCount || 0}</span>
                         <span className="text-gray-400 mx-1">/</span>
-                        <span className="text-red-500 ml-1">-{match.negativeFeedbackCount}</span>
+                        <span className="text-red-500 ml-1">-{match.negativeCount || 0}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -719,7 +733,8 @@ const MatchManagementPage = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

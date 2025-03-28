@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { IAudioGear } from '../../../lib/models/gear-models';
+import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/ui/StatusComponents';
 
 // Component for the Audio Gear Management page
 const AudioGearManagementPage = () => {
@@ -61,8 +62,8 @@ const AudioGearManagementPage = () => {
         setAudioGear(data.items);
         setTotalItems(data.total);
         setLoading(false);
-      } catch (err) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }
     };
@@ -140,19 +141,31 @@ const AudioGearManagementPage = () => {
       }
     ];
     
-    // Use mock data for now
-    setAudioGear(mockData as any);
-    setTotalItems(mockData.length);
-    setLoading(false);
-    
     // Extract unique categories and brands for filters
-    const uniqueCategories = [...new Set(mockData.map(item => item.category))];
-    const uniqueBrands = [...new Set(mockData.map(item => item.brand))];
-    setCategories(uniqueCategories);
-    setBrands(uniqueBrands);
+    const fetchCategoriesAndBrands = async () => {
+      try {
+        const response = await fetch('/api/admin/gear/categories-brands');
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories and brands');
+        }
+        const data = await response.json();
+        setCategories(data.categories);
+        setBrands(data.brands);
+      } catch (err) {
+        console.error('Error fetching categories and brands:', err);
+        // Fallback to extracting from current items if API fails
+        const uniqueCategories = [...new Set(audioGear.map(item => item.category))];
+        const uniqueBrands = [...new Set(audioGear.map(item => item.brand))];
+        setCategories(uniqueCategories);
+        setBrands(uniqueBrands);
+      }
+    };
+
+    // Fetch audio gear data
+    fetchAudioGear();
     
-    // Uncomment this when the API endpoint is implemented
-    // fetchAudioGear();
+    // Fetch categories and brands for filters
+    fetchCategoriesAndBrands();
   }, [currentPage, itemsPerPage, searchTerm, filterCategory, filterBrand, sortField, sortDirection]);
   
   // Handle page change
@@ -234,7 +247,7 @@ const AudioGearManagementPage = () => {
   const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
   
   // Generate page numbers for pagination
-  const pageNumbers = [];
+  const pageNumbers: (number | string)[] = [];
   const maxPageButtons = 5;
   
   if (totalPages <= maxPageButtons) {
@@ -365,27 +378,15 @@ const AudioGearManagementPage = () => {
       {/* Audio Gear Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         {loading ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">Loading audio gear data...</p>
-          </div>
+          <LoadingSpinner />
         ) : error ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="h-8 w-8 text-red-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p className="mt-2 text-sm text-red-500">{error}</p>
-          </div>
+          <ErrorMessage message={error} />
         ) : audioGear.length === 0 ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">No audio gear found. Try adjusting your filters or add some gear.</p>
-          </div>
+          <EmptyState 
+            message="No audio gear found. Try adjusting your filters or add some gear."
+            actionLabel="Add Audio Gear"
+            onAction={handleAddGear}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">

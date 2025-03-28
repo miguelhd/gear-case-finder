@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { ICase } from '../../../lib/models/gear-models';
+import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/ui/StatusComponents';
 
 // Component for the Case Management page
 const CaseManagementPage = () => {
@@ -68,8 +69,8 @@ const CaseManagementPage = () => {
         setCases(data.items);
         setTotalItems(data.total);
         setLoading(false);
-      } catch (err) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }
     };
@@ -246,19 +247,31 @@ const CaseManagementPage = () => {
       }
     ];
     
-    // Use mock data for now
-    setCases(mockData as any);
-    setTotalItems(mockData.length);
-    setLoading(false);
+    // Extract unique types, brands, and protection levels for filters
+    const fetchTypesAndBrands = async () => {
+      try {
+        const response = await fetch('/api/admin/cases/types-brands');
+        if (!response.ok) {
+          throw new Error('Failed to fetch types and brands');
+        }
+        const data = await response.json();
+        setTypes(data.types);
+        setBrands(data.brands);
+      } catch (err) {
+        console.error('Error fetching types and brands:', err);
+        // Fallback to extracting from current items if API fails
+        const uniqueTypes = [...new Set(cases.map(item => item.type))];
+        const uniqueBrands = [...new Set(cases.map(item => item.brand))];
+        setTypes(uniqueTypes);
+        setBrands(uniqueBrands);
+      }
+    };
+
+    // Fetch case data
+    fetchCases();
     
-    // Extract unique types and brands for filters
-    const uniqueTypes = [...new Set(mockData.map(item => item.type))];
-    const uniqueBrands = [...new Set(mockData.map(item => item.brand))];
-    setTypes(uniqueTypes);
-    setBrands(uniqueBrands);
-    
-    // Uncomment this when the API endpoint is implemented
-    // fetchCases();
+    // Fetch types and brands for filters
+    fetchTypesAndBrands();
   }, [currentPage, itemsPerPage, searchTerm, filterType, filterBrand, filterProtectionLevel, minPrice, maxPrice, sortField, sortDirection]);
   
   // Handle page change
@@ -358,7 +371,7 @@ const CaseManagementPage = () => {
   const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
   
   // Generate page numbers for pagination
-  const pageNumbers = [];
+  const pageNumbers: (number | string)[] = [];
   const maxPageButtons = 5;
   
   if (totalPages <= maxPageButtons) {
@@ -535,27 +548,15 @@ const CaseManagementPage = () => {
       {/* Case Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         {loading ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">Loading case data...</p>
-          </div>
+          <LoadingSpinner />
         ) : error ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="h-8 w-8 text-red-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p className="mt-2 text-sm text-red-500">{error}</p>
-          </div>
+          <ErrorMessage message={error} />
         ) : cases.length === 0 ? (
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <svg className="h-8 w-8 text-gray-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">No cases found. Try adjusting your filters or add some cases.</p>
-          </div>
+          <EmptyState 
+            message="No cases found. Try adjusting your filters or add some cases."
+            actionLabel="Add Case"
+            onAction={handleAddCase}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
