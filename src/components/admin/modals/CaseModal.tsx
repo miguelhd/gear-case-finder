@@ -158,7 +158,7 @@ const CaseModal: React.FC<CaseModalProps> = ({
       isOpen={isOpen} 
       onClose={onClose} 
       title={mode === 'add' ? 'Add Case' : 'Edit Case'}
-      size="lg"
+      maxWidth="max-w-4xl"
     >
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-6">

@@ -52,7 +52,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
       isOpen={isOpen} 
       onClose={onClose} 
       title={`Import ${itemType}`}
-      size="md"
+      maxWidth="max-w-2xl"
     >
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">

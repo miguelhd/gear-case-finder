@@ -3,27 +3,46 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ModalBaseProps {
+  /**
+   * Whether the modal is open
+   */
   isOpen: boolean;
+  
+  /**
+   * Function to call when the modal is closed
+   */
   onClose: () => void;
+  
+  /**
+   * Title of the modal
+   */
   title: string;
+  
+  /**
+   * Content of the modal
+   */
   children: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  
+  /**
+   * Optional maximum width class for the modal
+   * Default is 'max-w-2xl'
+   */
+  maxWidth?: string;
+  
+  /**
+   * Optional footer content
+   */
+  footer?: ReactNode;
 }
 
-const ModalBase: React.FC<ModalBaseProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
-  size = 'md' 
+const ModalBase: React.FC<ModalBaseProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = 'max-w-2xl',
+  footer
 }) => {
-  const sizeClasses = {
-    sm: 'sm:max-w-sm',
-    md: 'sm:max-w-md',
-    lg: 'sm:max-w-lg',
-    xl: 'sm:max-w-xl'
-  };
-
   return (
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={onClose}>
@@ -50,7 +69,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className={`relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full ${sizeClasses[size]} sm:p-6`}>
+              <Dialog.Panel className={`relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full ${maxWidth} sm:p-6`}>
                 <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
                   <button
                     type="button"
@@ -62,11 +81,20 @@ const ModalBase: React.FC<ModalBaseProps> = ({
                   </button>
                 </div>
                 <div>
-                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
-                    {title}
-                  </Dialog.Title>
-                  {children}
+                  <div className="mt-3 text-center sm:mt-0 sm:text-left">
+                    <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900">
+                      {title}
+                    </Dialog.Title>
+                    <div className="mt-4">
+                      {children}
+                    </div>
+                  </div>
                 </div>
+                {footer && (
+                  <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
+                    {footer}
+                  </div>
+                )}
               </Dialog.Panel>
             </Transition.Child>
           </div>
