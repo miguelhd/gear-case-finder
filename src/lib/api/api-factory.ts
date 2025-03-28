@@ -5,7 +5,7 @@
  * to replace the existing scraper-based components.
  */
 
-import ApiManager from './api-manager';
+import { ApiManager } from './api-manager';
 import ApiIntegrationService from './api-integration-service';
 import { ApiCacheService } from './api-cache-service';
 import { BatchProcessingSystem } from './batch-processing-system';

@@ -3,7 +3,6 @@ import { createLogger, format, transports } from 'winston';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { scraperMetrics, getScraperHealth } from './monitoring'
 import { getCacheStats } from './cache';
 import mongoose from './mongodb';
 
@@ -291,7 +290,6 @@ class SystemMetrics {
       },
       api: this.metrics.apiRequests,
       database: this.metrics.database,
-      scrapers: getScraperHealth(),
       cache: getCacheStats()
     };
   }
@@ -339,106 +337,80 @@ class SystemMetrics {
       issues.push('Database connection error');
     } else if (this.metrics.database.connectionStatus === 'disconnected') {
       status = 'critical';
-      issues.push('Database is disconnected');
+      issues.push('Database disconnected');
     }
     
-    // Check scraper health
-    const scraperHealth = getScraperHealth();
-    if (scraperHealth.status === 'critical') {
-      status = 'critical';
-      issues.push('Scraper system is in critical state');
-    } else if (scraperHealth.status === 'warning') {
-      if (status !== 'critical') status = 'warning';
-      issues.push('Scraper system has warnings');
-    }
-    
+    // Return health status
     return {
       status,
       issues,
-      timestamp: new Date(),
-      metrics: this.getAllMetrics()
+      timestamp: new Date().toISOString()
     };
   }
 }
 
-// Create a singleton instance of the system metrics
-export const systemMetrics = new SystemMetrics();
+// Create singleton instance
+const systemMetrics = new SystemMetrics();
 
-// Start monitoring system metrics
-let monitoringInterval: NodeJS.Timeout | null = null;
+// Start periodic system metrics collection
+let metricsInterval: NodeJS.Timeout | null = null;
 
-export function startMonitoring(intervalMs = 60000): void {
-  // Stop any existing monitoring
-  if (monitoringInterval) {
-    clearInterval(monitoringInterval);
+export function startSystemMetricsCollection(intervalMs = 60000): () => void {
+  // Clear any existing interval
+  if (metricsInterval) {
+    clearInterval(metricsInterval);
   }
   
   // Update metrics immediately
   systemMetrics.updateSystemMetrics();
   
   // Set up interval for regular updates
-  monitoringInterval = setInterval(() => {
+  metricsInterval = setInterval(() => {
     systemMetrics.updateSystemMetrics();
   }, intervalMs);
   
-  systemLogger.info('System monitoring started', { intervalMs });
+  // Return function to stop collection
+  return () => {
+    if (metricsInterval) {
+      clearInterval(metricsInterval);
+      metricsInterval = null;
+    }
+  };
 }
 
-export function stopMonitoring(): void {
-  if (monitoringInterval) {
-    clearInterval(monitoringInterval);
-    monitoringInterval = null;
-    systemLogger.info('System monitoring stopped');
-  }
-}
-
-// API monitoring middleware
-export function apiMonitoringMiddleware(req: any, res: any, next: Function): void {
+// API request monitoring middleware
+export function monitorApiRequest(req: any, res: any, next: () => void): void {
   const startTime = Date.now();
-  const originalEnd = res.end;
   
-  // Override res.end to capture response time and status
-  res.end = function(...args: any[]) {
+  // Capture response data
+  const originalEnd = res.end;
+  res.end = function(chunk: any, encoding: string) {
+    // Calculate response time
     const responseTime = Date.now() - startTime;
-    const endpoint = req.originalUrl || req.url;
-    const statusCode = res.statusCode;
     
     // Record API request
-    const mongooseInstance = mongoose as any;
-    systemMetrics.updateDatabaseMetrics(mongooseInstance.connection?.readyState === 1);
-    systemMetrics.recordApiRequest(endpoint, responseTime, statusCode);
+    systemMetrics.recordApiRequest(req.url, responseTime, res.statusCode);
     
-    // Call the original end method
-    return originalEnd.apply(this, args);
+    // Call original end method
+    return originalEnd.call(this, chunk, encoding);
   };
   
   next();
 }
 
-// Database monitoring
-const mongooseInstance = mongoose as any;
-if (mongooseInstance.connection) {
-  mongooseInstance.connection.on('connected', () => {
-    systemMetrics.updateDatabaseMetrics(true);
-    systemLogger.info('Database connected');
-  });
-
-  mongooseInstance.connection.on('disconnected', () => {
-    systemMetrics.updateDatabaseMetrics(false);
-    systemLogger.warn('Database disconnected');
-  });
-
-  mongooseInstance.connection.on('error', (err) => {
-    systemMetrics.updateDatabaseMetrics(false, undefined, true);
-    systemLogger.error('Database connection error', { error: err });
-  });
-}
-
-// Export monitoring system
+// Export system metrics functions
 export default {
-  systemLogger,
-  systemMetrics,
-  startMonitoring,
-  stopMonitoring,
-  apiMonitoringMiddleware
+  startSystemMetricsCollection,
+  monitorApiRequest,
+  getSystemMetrics: () => systemMetrics.getAllMetrics(),
+  getSystemHealth: () => systemMetrics.getSystemHealth(),
+  recordDatabaseQuery: (queryTime: number, isError = false) => {
+    systemMetrics.updateDatabaseMetrics(true, queryTime, isError);
+  },
+  recordDatabaseError: () => {
+    systemMetrics.updateDatabaseMetrics(true, undefined, true);
+  },
+  recordDatabaseConnection: (connected: boolean) => {
+    systemMetrics.updateDatabaseMetrics(connected);
+  }
 };

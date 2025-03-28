@@ -1,4 +1,4 @@
-import { NormalizedProduct } from '../scrapers/data-normalizer';
+import { NormalizedProduct } from '../models/normalized-product';
 import { IAudioGear, ICase } from '../models/gear-models';
 
 export interface FeatureMatchingOptions {

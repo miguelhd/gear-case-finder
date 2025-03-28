@@ -2,7 +2,6 @@
 import { systemMetrics, startMonitoring, stopMonitoring } from '../../lib/system-monitoring';
 import { mongoose } from '../../lib/mongodb';
 import { clearCache, setCacheItem } from '../../lib/cache';
-import { scraperMetrics } from '../../lib/monitoring';
 
 describe('System Stability Tests', () => {
   beforeAll(() => {
@@ -18,7 +17,7 @@ describe('System Stability Tests', () => {
   beforeEach(() => {
     // Reset metrics before each test
     clearCache();
-    scraperMetrics.resetAllMetrics();
+    // Removed scraperMetrics.resetAllMetrics() as scraper functionality has been removed
   });
 
   test('System metrics are collected correctly', async () => {
@@ -121,21 +120,7 @@ describe('System Stability Tests', () => {
     expect(metrics.cache.itemCount).toBe(3);
   });
 
-  test('Scraper metrics are integrated correctly', () => {
-    // Record scraper metrics
-    scraperMetrics.recordRequest('amazon', true);
-    scraperMetrics.recordRequest('amazon', true);
-    scraperMetrics.recordRequest('amazon', false);
-    scraperMetrics.recordScrapedItems('amazon', 10);
-    
-    // Get metrics
-    const metrics = systemMetrics.getAllMetrics();
-    
-    // Verify scraper metrics
-    expect(metrics.scrapers).toBeDefined();
-    expect(metrics.scrapers.marketplaces).toHaveProperty('amazon');
-    expect(metrics.scrapers.marketplaces.amazon.successRate).toBeCloseTo(66.67, 1);
-  });
+  // Removed test for scraper metrics as scraper functionality has been removed
 
   test('System health status is calculated correctly', () => {
     // Set up a healthy system
