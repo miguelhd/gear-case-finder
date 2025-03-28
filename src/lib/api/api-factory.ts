@@ -18,6 +18,7 @@ export class ApiFactory {
     return new ApiManager({
       canopyApiKey: process.env['CANOPY_API_KEY'] || '',
       reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
+      aliexpressRapidApiKey: process.env['ALIEXPRESS_RAPIDAPI_KEY'] || '',
       ...options
     });
   }
@@ -29,6 +30,7 @@ export class ApiFactory {
     return new ApiIntegrationService({
       canopyApiKey: process.env['CANOPY_API_KEY'] || '',
       reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
+      aliexpressRapidApiKey: process.env['ALIEXPRESS_RAPIDAPI_KEY'] || '',
       ...options
     });
   }
@@ -47,6 +49,7 @@ export class ApiFactory {
     return new BatchProcessingSystem({
       canopyApiKey: process.env['CANOPY_API_KEY'] || '',
       reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
+      aliexpressRapidApiKey: process.env['ALIEXPRESS_RAPIDAPI_KEY'] || '',
       ...options
     });
   }

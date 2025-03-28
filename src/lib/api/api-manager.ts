@@ -14,6 +14,7 @@ import { IAudioGear, ICase } from '../models/gear-models';
 import { ApiCacheService } from './api-cache-service';
 import CanopyApiClient from './canopy-api-client';
 import ReverbApiClient from './reverb-api-client';
+import AliExpressApiService from './aliexpress-api-service';
 import { processSearchResults as processCanopyResults } from './canopy-data-mapper';
 import { processSearchResults as processReverbResults } from './reverb-data-mapper';
 import { BatchProcessingSystem } from './batch-processing-system';
@@ -74,6 +75,11 @@ export interface IApiManagerOptions {
   reverbAccessToken?: string;
   
   /**
+   * API key for the AliExpress API (RapidAPI).
+   */
+  aliexpressRapidApiKey?: string;
+  
+  /**
    * Whether to enable batch processing of API requests.
    */
   enableBatchProcessing?: boolean;
@@ -124,6 +130,7 @@ export class ApiManager {
   private cacheService: ApiCacheService;
   private canopyClient: CanopyApiClient;
   private reverbClient: ReverbApiClient;
+  private aliexpressService: AliExpressApiService;
   private batchProcessingSystem?: BatchProcessingSystem;
   private imageDownloader?: ImageDownloader;
   private apiSources: Map<string, string> = new Map();
@@ -155,6 +162,7 @@ export class ApiManager {
       mongodbUri: process.env['MONGODB_URI'] || 'mongodb+srv://gearCaseApp:rucwoj-watxor-Rocji5@cluster0.mongodb.net/musician-case-finder',
       canopyApiKey: process.env['CANOPY_API_KEY'] || '',
       reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
+      aliexpressRapidApiKey: process.env['ALIEXPRESS_RAPIDAPI_KEY'] || '',
       enableBatchProcessing: true,
       enableCaching: true,
       ...options
@@ -163,6 +171,10 @@ export class ApiManager {
     // Initialize API clients - ensure we always pass a string, not undefined
     this.canopyClient = new CanopyApiClient({ apiKey: this.options.canopyApiKey || '' });
     this.reverbClient = new ReverbApiClient({ accessToken: this.options.reverbAccessToken || '' });
+    this.aliexpressService = new AliExpressApiService({ 
+      rapidApiKey: this.options.aliexpressRapidApiKey || '',
+      cacheEnabled: this.options.enableCaching
+    });
     
     // Initialize cache service
     this.cacheService = new ApiCacheService();
@@ -187,6 +199,7 @@ export class ApiManager {
     // Register API sources
     this.apiSources.set('canopy', 'Canopy API');
     this.apiSources.set('reverb', 'Reverb API');
+    this.apiSources.set('aliexpress', 'AliExpress API');
     
     this.setupLogger();
     
@@ -288,10 +301,18 @@ export class ApiManager {
           return { audioGear: [], cases: [] };
         });
       
+      // Search AliExpress API
+      const aliexpressResponse = await this.aliexpressService.searchAudioGear(query, { limit })
+        .catch(error => {
+          this.logger.error(`Error searching AliExpress API for audio gear: ${error.message}`);
+          return [];
+        });
+      
       // Combine results - extract audioGear arrays from the responses
       const combinedResults = [
         ...(canopyResponse.audioGear || []), 
-        ...(reverbResponse.audioGear || [])
+        ...(reverbResponse.audioGear || []),
+        ...(aliexpressResponse || [])
       ];
       
       // Cache results if enabled
@@ -319,7 +340,7 @@ export class ApiManager {
       if (this.options.enableCaching) {
         const cachedResult = await this.cacheService.get(apiName, params);
         if (cachedResult) {
-          this.logger.info(`Cache hit for case search: ${query}`);
+          this.logger.info(`Cache hit for cases search: ${query}`);
           return cachedResult as ICase[];
         }
       }
@@ -342,10 +363,18 @@ export class ApiManager {
           return { audioGear: [], cases: [] };
         });
       
+      // Search AliExpress API
+      const aliexpressResponse = await this.aliexpressService.searchCases(query, { limit })
+        .catch(error => {
+          this.logger.error(`Error searching AliExpress API for cases: ${error.message}`);
+          return [];
+        });
+      
       // Combine results - extract cases arrays from the responses
       const combinedResults = [
         ...(canopyResponse.cases || []), 
-        ...(reverbResponse.cases || [])
+        ...(reverbResponse.cases || []),
+        ...(aliexpressResponse || [])
       ];
       
       // Cache results if enabled
@@ -361,290 +390,161 @@ export class ApiManager {
   }
   
   /**
-   * Get audio gear details from a specific API source
+   * Get the available API sources
    */
-  async getAudioGearDetails(source: string, productId: string): Promise<IAudioGear | null> {
-    try {
-      // Create a cache key for this request
-      const apiName = 'audio_gear_details';
-      const params = { source, productId };
-      
-      // Check cache first if enabled
-      if (this.options.enableCaching) {
-        const cachedResult = await this.cacheService.get(apiName, params);
-        if (cachedResult) {
-          this.logger.info(`Cache hit for audio gear details: ${source}/${productId}`);
-          return cachedResult as IAudioGear;
-        }
-      }
-      
-      // Get details from the appropriate API source
-      let result: IAudioGear | null = null;
-      
-      if (source === 'canopy') {
-        // Use getProduct method instead of non-existent getAudioGearDetails
-        const productData = await this.canopyClient.getProduct(productId);
-        // Process the product data to convert it to IAudioGear format
-        // This is a simplified version since we're removing scraper code
-        result = {
-          _id: productId,
-          name: productData.title || productData.name || '',
-          brand: productData.brand || 'Unknown',
-          category: 'keyboard', // Default category
-          dimensions: {
-            length: 0,
-            width: 0,
-            height: 0,
-            unit: 'in'
-          },
-          marketplace: 'canopy',
-          updatedAt: new Date()
-        } as IAudioGear;
-      } else if (source === 'reverb') {
-        // Use getItem method instead of non-existent getAudioGearDetails
-        const itemData = await this.reverbClient.getItem(productId);
-        // Process the item data to convert it to IAudioGear format
-        // This is a simplified version since we're removing scraper code
-        result = {
-          _id: productId,
-          name: itemData.title || itemData.name || '',
-          brand: itemData.brand || 'Unknown',
-          category: 'keyboard', // Default category
-          dimensions: {
-            length: 0,
-            width: 0,
-            height: 0,
-            unit: 'in'
-          },
-          marketplace: 'reverb',
-          updatedAt: new Date()
-        } as IAudioGear;
-      } else {
-        this.logger.warn(`Unknown API source: ${source}`);
-        return null;
-      }
-      
-      // Cache result if enabled and result exists
-      if (this.options.enableCaching && result) {
-        await this.cacheService.set(apiName, params, result);
-      }
-      
-      return result;
-    } catch (error: unknown) {
-      this.logger.error(`Error getting audio gear details from ${source}:`, error);
-      return null;
-    }
-  }
-  
-  /**
-   * Get case details from a specific API source
-   */
-  async getCaseDetails(source: string, productId: string): Promise<ICase | null> {
-    try {
-      // Create a cache key for this request
-      const apiName = 'case_details';
-      const params = { source, productId };
-      
-      // Check cache first if enabled
-      if (this.options.enableCaching) {
-        const cachedResult = await this.cacheService.get(apiName, params);
-        if (cachedResult) {
-          this.logger.info(`Cache hit for case details: ${source}/${productId}`);
-          return cachedResult as ICase;
-        }
-      }
-      
-      // Get details from the appropriate API source
-      let result: ICase | null = null;
-      
-      if (source === 'canopy') {
-        // Use getProduct method instead of non-existent getCaseDetails
-        const productData = await this.canopyClient.getProduct(productId);
-        // Process the product data to convert it to ICase format
-        // This is a simplified version since we're removing scraper code
-        result = {
-          _id: productId,
-          name: productData.title || productData.name || '',
-          marketplace: 'canopy',
-          dimensions: {
-            interior: {
-              length: 0,
-              width: 0,
-              height: 0,
-              unit: 'in'
-            },
-            exterior: {
-              length: 0,
-              width: 0,
-              height: 0,
-              unit: 'in'
-            }
-          },
-          updatedAt: new Date()
-        } as ICase;
-      } else if (source === 'reverb') {
-        // Use getItem method instead of non-existent getCaseDetails
-        const itemData = await this.reverbClient.getItem(productId);
-        // Process the item data to convert it to ICase format
-        // This is a simplified version since we're removing scraper code
-        result = {
-          _id: productId,
-          name: itemData.title || itemData.name || '',
-          marketplace: 'reverb',
-          dimensions: {
-            interior: {
-              length: 0,
-              width: 0,
-              height: 0,
-              unit: 'in'
-            },
-            exterior: {
-              length: 0,
-              width: 0,
-              height: 0,
-              unit: 'in'
-            }
-          },
-          updatedAt: new Date()
-        } as ICase;
-      } else {
-        this.logger.warn(`Unknown API source: ${source}`);
-        return null;
-      }
-      
-      // Cache result if enabled and result exists
-      if (this.options.enableCaching && result) {
-        await this.cacheService.set(apiName, params, result);
-      }
-      
-      return result;
-    } catch (error: unknown) {
-      this.logger.error(`Error getting case details from ${source}:`, error);
-      return null;
-    }
-  }
-  
-  /**
-   * Run a batch job manually
-   */
-  async runBatchJob(jobType: string): Promise<void> {
-    if (!this.batchProcessingSystem) {
-      throw new Error('Batch processing system is not enabled');
-    }
-    
-    await this.batchProcessingSystem.runManualBatchJob(jobType);
-  }
-  
-  /**
-   * Get batch job history
-   */
-  async getBatchJobHistory(limit: number = 10): Promise<IBatchJobHistoryItem[]> {
-    if (!this.batchProcessingSystem) {
-      return [];
-    }
-    
-    // Since getJobHistory doesn't exist, we'll return an empty array
-    // This is a stub implementation since we're removing scraper code
-    this.logger.info(`Returning empty batch job history (limit: ${limit})`);
-    return [];
+  getApiSources(): Map<string, string> {
+    return this.apiSources;
   }
   
   /**
    * Get cache statistics
    */
   async getCacheStats(): Promise<ICacheStats> {
-    if (!this.options.enableCaching) {
-      return { enabled: false };
+    try {
+      if (!this.options.enableCaching) {
+        return { enabled: false };
+      }
+      
+      return await this.cacheService.getStats();
+    } catch (error: unknown) {
+      this.logger.error('Error getting cache stats:', error);
+      return { enabled: this.options.enableCaching || false };
     }
-    
-    // Get the stats from the cache service
-    const rawStats = await this.cacheService.getStats();
-    
-    // Map the raw stats to our ICacheStats interface
-    return {
-      enabled: true,
-      itemCount: rawStats.totalCount,
-      hits: 0, // Not tracked in the current implementation
-      misses: 0, // Not tracked in the current implementation
-      hitRate: 0, // Not tracked in the current implementation
-      totalCount: rawStats.totalCount,
-      expiredCount: rawStats.expiredCount,
-      activeCount: rawStats.activeCount,
-      namespaceStats: rawStats.namespaceStats
-    };
   }
   
   /**
-   * Schedule a job to run at regular intervals
+   * Clear the cache
    */
-  scheduleJob(
-    jobName: string,
-    operation: () => Promise<void>,
-    intervalMinutes: number
-  ) {
-    if (!this.batchProcessingSystem) {
-      throw new Error('Batch processing system is not enabled');
+  async clearCache(): Promise<boolean> {
+    try {
+      if (!this.options.enableCaching) {
+        return false;
+      }
+      
+      return await this.cacheService.clear();
+    } catch (error: unknown) {
+      this.logger.error('Error clearing cache:', error);
+      return false;
     }
-    
-    // Since scheduleJob might not exist, we'll log a message and return null
-    // This is a stub implementation since we're removing scraper code
-    this.logger.info(`Scheduling job ${jobName} to run every ${intervalMinutes} minutes (stub implementation)`);
-    return null;
   }
   
   /**
-   * Search for cases that match the dimensions of an audio gear item
+   * Get batch job history
+   */
+  async getBatchJobHistory(): Promise<IBatchJobHistoryItem[]> {
+    try {
+      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
+        return [];
+      }
+      
+      return await this.batchProcessingSystem.getJobHistory();
+    } catch (error: unknown) {
+      this.logger.error('Error getting batch job history:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Start a batch job to fetch audio gear data
+   */
+  async startAudioGearBatchJob(queries: string[]): Promise<string> {
+    try {
+      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
+        throw new Error('Batch processing is not enabled');
+      }
+      
+      return await this.batchProcessingSystem.startAudioGearBatchJob(queries);
+    } catch (error: unknown) {
+      this.logger.error('Error starting audio gear batch job:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Start a batch job to fetch case data
+   */
+  async startCasesBatchJob(queries: string[]): Promise<string> {
+    try {
+      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
+        throw new Error('Batch processing is not enabled');
+      }
+      
+      return await this.batchProcessingSystem.startCasesBatchJob(queries);
+    } catch (error: unknown) {
+      this.logger.error('Error starting cases batch job:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get batch job status
+   */
+  async getBatchJobStatus(jobId: string): Promise<IBatchJobHistoryItem | null> {
+    try {
+      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
+        return null;
+      }
+      
+      return await this.batchProcessingSystem.getJobStatus(jobId);
+    } catch (error: unknown) {
+      this.logger.error('Error getting batch job status:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Find cases that match the dimensions of a specific audio gear
    */
   async searchCasesForAudioGear(audioGear: IAudioGear, options: { page?: number, limit?: number } = {}): Promise<ICase[]> {
     try {
+      if (!audioGear || !audioGear.dimensions) {
+        return [];
+      }
+      
       // Create a cache key for this search
       const apiName = 'search_cases_for_audio_gear';
-      const params = { audioGearId: audioGear._id?.toString(), ...options };
+      const params = { audioGearId: audioGear.id, ...options };
       
       // Check cache first if enabled
       if (this.options.enableCaching) {
         const cachedResult = await this.cacheService.get(apiName, params);
         if (cachedResult) {
-          this.logger.info(`Cache hit for cases matching audio gear: ${audioGear._id}`);
+          this.logger.info(`Cache hit for cases search for audio gear: ${audioGear.id}`);
           return cachedResult as ICase[];
         }
       }
       
       // Prepare search options
-      const limit = options.limit || 10;
+      const limit = options.limit || 20;
       
-      // Get the dimensions of the audio gear
-      const { length, width, height, unit } = audioGear.dimensions;
-      
-      // Search for cases that can fit this audio gear
+      // Search for cases
       const cases = await this.searchCases('case', { limit });
       
-      // Filter cases that can fit the audio gear
+      // Filter cases that match the dimensions of the audio gear
       const matchingCases = cases.filter(caseItem => {
-        const interiorDimensions = caseItem.dimensions.interior;
-        
-        // Skip cases with missing dimensions
-        if (!interiorDimensions) {
+        if (!caseItem.dimensions || !audioGear.dimensions) {
           return false;
         }
         
-        // Convert dimensions to the same unit if necessary
-        let adjustedLength = length;
-        let adjustedWidth = width;
-        let adjustedHeight = height;
+        // Check if case dimensions are larger than audio gear dimensions
+        const isLengthSuitable = !audioGear.dimensions.length || !caseItem.dimensions.length || caseItem.dimensions.length >= audioGear.dimensions.length;
+        const isWidthSuitable = !audioGear.dimensions.width || !caseItem.dimensions.width || caseItem.dimensions.width >= audioGear.dimensions.width;
+        const isHeightSuitable = !audioGear.dimensions.height || !caseItem.dimensions.height || caseItem.dimensions.height >= audioGear.dimensions.height;
         
-        if (unit !== interiorDimensions.unit) {
-          // Implement unit conversion logic here
-          // For simplicity, we'll assume all dimensions are in the same unit
-        }
-        
-        // Check if the audio gear fits in the case
-        return (
-          adjustedLength <= interiorDimensions.length &&
-          adjustedWidth <= interiorDimensions.width &&
-          adjustedHeight <= interiorDimensions.height
-        );
+        return isLengthSuitable && isWidthSuitable && isHeightSuitable;
       });
+      
+      // Try AliExpress API for more precise matching if available
+      if (this.options.aliexpressRapidApiKey) {
+        try {
+          const aliexpressMatchingCases = await this.aliexpressService.findMatchingCases(audioGear, { limit });
+          
+          // Add AliExpress cases to the matching cases
+          matchingCases.push(...aliexpressMatchingCases);
+        } catch (error) {
+          this.logger.error(`Error finding matching cases from AliExpress: ${error}`);
+        }
+      }
       
       // Cache results if enabled
       if (this.options.enableCaching) {
@@ -653,8 +553,10 @@ export class ApiManager {
       
       return matchingCases;
     } catch (error: unknown) {
-      this.logger.error('Error searching for cases matching audio gear:', error);
+      this.logger.error('Error searching for cases for audio gear:', error);
       return [];
     }
   }
 }
+
+export default ApiManager;
