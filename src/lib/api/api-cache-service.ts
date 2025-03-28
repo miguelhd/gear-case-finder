@@ -56,7 +56,10 @@ export class ApiCacheService {
       
       // Create indexes if they don't exist
       const indexes = await collection.indexes();
-      const indexNames = indexes.map(index => index.name);
+      const indexNames = indexes.map((index) => {
+        // Use type assertion to access the name property
+        return (index as any)['name'] as string;
+      });
       
       if (!indexNames.includes('key_1')) {
         await collection.createIndex({ key: 1 }, { unique: true });
@@ -118,12 +121,12 @@ export class ApiCacheService {
       }
       
       // Check if item is expired
-      if (cacheItem.expireAt && cacheItem.expireAt < new Date()) {
+      if (cacheItem['expireAt'] && cacheItem['expireAt'] < new Date()) {
         await collection.deleteOne({ key });
         return null;
       }
       
-      return cacheItem.data;
+      return cacheItem['data'];
     } catch (error) {
       console.error(`Error getting cache item for ${apiName}:`, error);
       return null;
@@ -262,8 +265,8 @@ export class ApiCacheService {
         expiredCount,
         activeCount: totalCount - expiredCount,
         namespaceStats: namespaceStats.map(stat => ({
-          namespace: stat._id,
-          count: stat.count
+          namespace: stat['_id'],
+          count: stat['count']
         }))
       };
     } catch (error) {

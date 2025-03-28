@@ -16,8 +16,8 @@ export class ApiFactory {
    */
   static createApiManager(options: any = {}): ApiManager {
     return new ApiManager({
-      canopyApiKey: process.env.CANOPY_API_KEY || '',
-      reverbAccessToken: process.env.REVERB_ACCESS_TOKEN || '',
+      canopyApiKey: process.env['CANOPY_API_KEY'] || '',
+      reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
       ...options
     });
   }
@@ -27,8 +27,8 @@ export class ApiFactory {
    */
   static createApiIntegrationService(options: any = {}): ApiIntegrationService {
     return new ApiIntegrationService({
-      canopyApiKey: process.env.CANOPY_API_KEY || '',
-      reverbAccessToken: process.env.REVERB_ACCESS_TOKEN || '',
+      canopyApiKey: process.env['CANOPY_API_KEY'] || '',
+      reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
       ...options
     });
   }
@@ -45,8 +45,8 @@ export class ApiFactory {
    */
   static createBatchProcessingSystem(options: any = {}): BatchProcessingSystem {
     return new BatchProcessingSystem({
-      canopyApiKey: process.env.CANOPY_API_KEY || '',
-      reverbAccessToken: process.env.REVERB_ACCESS_TOKEN || '',
+      canopyApiKey: process.env['CANOPY_API_KEY'] || '',
+      reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
       ...options
     });
   }

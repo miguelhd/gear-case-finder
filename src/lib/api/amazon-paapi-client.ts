@@ -30,6 +30,29 @@ interface GetItemsRequest {
   Resources?: string[];
 }
 
+// Define the payload interface to match all possible properties
+interface SearchItemsPayload {
+  Operation: string;
+  PartnerTag: string;
+  PartnerType: string;
+  Marketplace: string;
+  Keywords: string;
+  SearchIndex: string;
+  ItemCount: number;
+  Resources: string[];
+  BrowseNodeId?: string;
+  SortBy?: string;
+}
+
+interface GetItemsPayload {
+  Operation: string;
+  PartnerTag: string;
+  PartnerType: string;
+  Marketplace: string;
+  ItemIds: string[];
+  Resources: string[];
+}
+
 export class AmazonPaapiClient {
   private config: AmazonPaapiConfig;
   private defaultResources: string[];
@@ -58,7 +81,7 @@ export class AmazonPaapiClient {
   /**
    * Generate the required authentication headers for the Amazon Product Advertising API
    */
-  private generateHeaders(path: string, payload: any): Record<string, string> {
+  private generateHeaders(path: string, payload: Record<string, any>): Record<string, string> {
     const date = new Date();
     const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '');
     const dateStamp = amzDate.slice(0, 8);
@@ -71,7 +94,7 @@ export class AmazonPaapiClient {
       'content-type:application/json; charset=utf-8\n' +
       'host:' + this.config.host + '\n' +
       'x-amz-date:' + amzDate + '\n' +
-      'x-amz-target:com.amazon.paapi5.v1.ProductAdvertisingAPIv1.' + payload.Operation + '\n';
+      'x-amz-target:com.amazon.paapi5.v1.ProductAdvertisingAPIv1.' + payload['Operation'] + '\n';
     
     const signedHeaders = 'content-encoding;content-type;host;x-amz-date;x-amz-target';
     
@@ -139,7 +162,7 @@ export class AmazonPaapiClient {
       'content-type': 'application/json; charset=utf-8',
       'host': this.config.host,
       'x-amz-date': amzDate,
-      'x-amz-target': 'com.amazon.paapi5.v1.ProductAdvertisingAPIv1.' + payload.Operation,
+      'x-amz-target': 'com.amazon.paapi5.v1.ProductAdvertisingAPIv1.' + payload['Operation'],
       'Authorization': authorizationHeader
     };
   }
@@ -152,7 +175,7 @@ export class AmazonPaapiClient {
       const operation = 'SearchItems';
       const path = '/paapi5/searchitems';
       
-      const payload = {
+      const payload: SearchItemsPayload = {
         Operation: operation,
         PartnerTag: this.config.partnerTag,
         PartnerType: 'Associates',
@@ -164,11 +187,11 @@ export class AmazonPaapiClient {
       };
       
       if (request.BrowseNodeId) {
-        payload['BrowseNodeId'] = request.BrowseNodeId;
+        payload.BrowseNodeId = request.BrowseNodeId;
       }
       
       if (request.SortBy) {
-        payload['SortBy'] = request.SortBy;
+        payload.SortBy = request.SortBy;
       }
       
       const headers = this.generateHeaders(path, payload);
@@ -195,7 +218,7 @@ export class AmazonPaapiClient {
       const operation = 'GetItems';
       const path = '/paapi5/getitems';
       
-      const payload = {
+      const payload: GetItemsPayload = {
         Operation: operation,
         PartnerTag: this.config.partnerTag,
         PartnerType: 'Associates',

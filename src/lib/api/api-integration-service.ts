@@ -5,14 +5,14 @@
  * approach with the existing application functionality.
  */
 
-import { ApiManager, ApiManagerOptions } from './api-manager';
+import { ApiManager, IApiManagerOptions } from './api-manager';
 import { IAudioGear, ICase } from '../models/gear-models';
 import { NormalizedProduct } from '../scrapers/data-normalizer';
 
 export class ApiIntegrationService {
   private apiManager: ApiManager;
   
-  constructor(options: ApiManagerOptions = {}) {
+  constructor(options: IApiManagerOptions = {}) {
     this.apiManager = new ApiManager(options);
   }
   
@@ -28,10 +28,17 @@ export class ApiIntegrationService {
    * This method provides compatibility with the existing scraper-based approach
    */
   async searchAllMarketplaces(query: string, options: { page?: number } = {}): Promise<NormalizedProduct[]> {
+    // Create search options objects with proper handling of optional properties
+    const searchOptions: { limit: number } = { limit: 10 };
+    // Only add page property if it exists
+    if (options.page !== undefined) {
+      (searchOptions as { page: number, limit: number }).page = options.page;
+    }
+    
     // Search for both audio gear and cases
     const [audioGearResults, caseResults] = await Promise.all([
-      this.apiManager.searchAudioGear(query, { page: options.page, limit: 10 }),
-      this.apiManager.searchCases(query, { page: options.page, limit: 10 })
+      this.apiManager.searchAudioGear(query, searchOptions),
+      this.apiManager.searchCases(query, searchOptions)
     ]);
     
     // Convert to NormalizedProduct format for compatibility with existing code
@@ -68,14 +75,21 @@ export class ApiIntegrationService {
    * This method provides compatibility with the existing scraper-based approach
    */
   async getProductsByCategory(marketplace: string, category: string, options: { page?: number } = {}): Promise<NormalizedProduct[]> {
+    // Create search options objects with proper handling of optional properties
+    const searchOptions: { limit: number } = { limit: 10 };
+    // Only add page property if it exists
+    if (options.page !== undefined) {
+      (searchOptions as { page: number, limit: number }).page = options.page;
+    }
+    
     // Determine if this is an audio gear category or a case category
     const isAudioGearCategory = this.isAudioGearCategory(category);
     
     if (isAudioGearCategory) {
-      const audioGearResults = await this.apiManager.searchAudioGear(category, { page: options.page, limit: 10 });
+      const audioGearResults = await this.apiManager.searchAudioGear(category, searchOptions);
       return this.convertAudioGearToNormalizedProducts(audioGearResults);
     } else {
-      const caseResults = await this.apiManager.searchCases(category, { page: options.page, limit: 10 });
+      const caseResults = await this.apiManager.searchCases(category, searchOptions);
       return this.convertCasesToNormalizedProducts(caseResults);
     }
   }
@@ -144,77 +158,115 @@ export class ApiIntegrationService {
    * Convert IAudioGear to NormalizedProduct for compatibility with existing code
    */
   private convertAudioGearToNormalizedProduct(audioGear: IAudioGear): NormalizedProduct {
-    return {
+    const now = new Date();
+    
+    // Create a base product without the problematic weight property
+    const baseProduct = {
       id: audioGear._id?.toString() || `audio_gear_${Date.now()}`,
-      name: audioGear.name,
-      brand: audioGear.brand,
+      sourceId: audioGear._id?.toString() || `audio_gear_${Date.now()}`,
+      marketplace: audioGear.marketplace || 'unknown',
+      title: audioGear.name,
+      description: audioGear.description || '',
       price: audioGear.price || 0,
       currency: audioGear.currency || 'USD',
-      description: audioGear.description || '',
-      category: audioGear.category,
-      type: audioGear.type,
-      imageUrl: audioGear.imageUrl || '',
-      imageUrls: audioGear.imageUrl ? [audioGear.imageUrl] : [],
       url: audioGear.productUrl || '',
-      marketplace: audioGear.marketplace || 'unknown',
-      sourceId: audioGear._id?.toString() || `audio_gear_${Date.now()}`,
+      imageUrls: audioGear.imageUrl ? [audioGear.imageUrl] : [],
       dimensions: {
         length: audioGear.dimensions.length,
         width: audioGear.dimensions.width,
         height: audioGear.dimensions.height,
         unit: audioGear.dimensions.unit
       },
-      weight: audioGear.weight ? {
-        value: audioGear.weight.value,
-        unit: audioGear.weight.unit
-      } : undefined,
-      productType: 'audio_gear',
-      features: [],
       rating: 0,
       reviewCount: 0,
       availability: 'in_stock',
-      metadata: {}
+      seller: {
+        name: 'Unknown Seller',
+        url: '',
+        rating: 0
+      },
+      category: audioGear.category,
+      features: [],
+      scrapedAt: now,
+      normalizedAt: now,
+      productType: 'audio_gear',
+      isCase: false
     };
+    
+    // Use type assertion to add the weight property conditionally
+    const result = baseProduct as NormalizedProduct;
+    
+    // Only add weight property if it exists in the source
+    if (audioGear.weight) {
+      result.weight = {
+        value: audioGear.weight.value,
+        unit: audioGear.weight.unit
+      };
+    }
+    
+    return result;
   }
   
   /**
    * Convert ICase to NormalizedProduct for compatibility with existing code
    */
   private convertCaseToNormalizedProduct(caseItem: ICase): NormalizedProduct {
-    return {
+    const now = new Date();
+    const seller = caseItem.seller ? {
+      name: caseItem.seller.name || 'Unknown Seller',
+      url: caseItem.seller.url || '',
+      rating: caseItem.seller.rating || 0
+    } : {
+      name: 'Unknown Seller',
+      url: '',
+      rating: 0
+    };
+    
+    // Create a base product without the problematic weight property
+    const baseProduct = {
       id: caseItem._id?.toString() || `case_${Date.now()}`,
-      name: caseItem.name,
-      brand: caseItem.brand,
+      sourceId: caseItem._id?.toString() || `case_${Date.now()}`,
+      marketplace: caseItem.marketplace || 'unknown',
+      title: caseItem.name,
+      description: caseItem.description || '',
       price: caseItem.price || 0,
       currency: caseItem.currency || 'USD',
-      description: caseItem.description || '',
-      category: 'case',
-      type: caseItem.type,
-      imageUrl: caseItem.imageUrl || '',
-      imageUrls: caseItem.imageUrls || [],
       url: caseItem.url || '',
-      marketplace: caseItem.marketplace || 'unknown',
-      sourceId: caseItem._id?.toString() || `case_${Date.now()}`,
+      imageUrls: caseItem.imageUrls || [],
       dimensions: caseItem.dimensions.interior,
-      weight: caseItem.weight,
-      productType: 'case',
-      features: caseItem.features || [],
       rating: caseItem.rating || 0,
       reviewCount: caseItem.reviewCount || 0,
       availability: 'in_stock',
-      metadata: {
-        protectionLevel: caseItem.protectionLevel,
-        waterproof: caseItem.waterproof,
-        shockproof: caseItem.shockproof,
-        hasPadding: caseItem.hasPadding,
-        hasCompartments: caseItem.hasCompartments,
-        hasHandle: caseItem.hasHandle,
-        hasWheels: caseItem.hasWheels,
-        hasLock: caseItem.hasLock,
-        material: caseItem.material,
-        color: caseItem.color
+      seller: seller,
+      category: 'case',
+      features: caseItem.features || [],
+      scrapedAt: now,
+      normalizedAt: now,
+      productType: 'case',
+      isCase: true,
+      caseCompatibility: {
+        minLength: 0,
+        maxLength: caseItem.dimensions.interior.length,
+        minWidth: 0,
+        maxWidth: caseItem.dimensions.interior.width,
+        minHeight: 0,
+        maxHeight: caseItem.dimensions.interior.height,
+        dimensionUnit: caseItem.dimensions.interior.unit
       }
     };
+    
+    // Use type assertion to add the weight property conditionally
+    const result = baseProduct as NormalizedProduct;
+    
+    // Only add weight property if it exists in the source
+    if (caseItem.weight) {
+      result.weight = {
+        value: caseItem.weight.value,
+        unit: caseItem.weight.unit
+      };
+    }
+    
+    return result;
   }
   
   /**

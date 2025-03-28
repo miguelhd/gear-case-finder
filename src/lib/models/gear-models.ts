@@ -1,5 +1,4 @@
-import { Schema, model, Document, models, Model } from 'mongoose';
-import mongoose from 'mongoose';
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
 /**
  * Represents an audio gear item with its properties and dimensions.
@@ -137,7 +136,9 @@ export interface IAudioGear extends Document {
   updatedAt?: Date;
 }
 
-// Audio Gear schema
+/**
+ * Schema definition for AudioGear
+ */
 const AudioGearSchema = new Schema({
   name: { type: String, required: true },
   brand: { type: String, required: true },
@@ -420,7 +421,9 @@ export interface ICase extends Document {
   updatedAt?: Date;
 }
 
-// Case schema
+/**
+ * Schema definition for Case
+ */
 const CaseSchema = new Schema({
   name: { type: String, required: true },
   brand: { type: String, required: true },
@@ -549,7 +552,9 @@ export interface IGearCaseMatch extends Document {
   updatedAt?: Date;
 }
 
-// Gear-Case Match schema
+/**
+ * Schema definition for GearCaseMatch
+ */
 const GearCaseMatchSchema = new Schema({
   gearId: { type: String, required: true },
   caseId: { type: String, required: true },
@@ -565,7 +570,17 @@ const GearCaseMatchSchema = new Schema({
 // Create index for unique gear-case combinations
 GearCaseMatchSchema.index({ gearId: 1, caseId: 1 }, { unique: true });
 
-// Create and export models
-export const AudioGear = models.AudioGear || model<IAudioGear>('AudioGear', AudioGearSchema, 'AudioGear');
-export const Case = models.Case || model<ICase>('Case', CaseSchema, 'Case');
-export const GearCaseMatch = models.GearCaseMatch || model<IGearCaseMatch>('GearCaseMatch', GearCaseMatchSchema, 'GearCaseMatch');
+// Type definitions for Mongoose models
+export type AudioGearModel = Model<IAudioGear>;
+export type CaseModel = Model<ICase>;
+export type GearCaseMatchModel = Model<IGearCaseMatch>;
+
+// Create and export models with proper typing
+export const AudioGear: AudioGearModel = mongoose.models.AudioGear as AudioGearModel || 
+  mongoose.model<IAudioGear, AudioGearModel>('AudioGear', AudioGearSchema, 'AudioGear');
+
+export const Case: CaseModel = mongoose.models.Case as CaseModel || 
+  mongoose.model<ICase, CaseModel>('Case', CaseSchema, 'Case');
+
+export const GearCaseMatch: GearCaseMatchModel = mongoose.models.GearCaseMatch as GearCaseMatchModel || 
+  mongoose.model<IGearCaseMatch, GearCaseMatchModel>('GearCaseMatch', GearCaseMatchSchema, 'GearCaseMatch');

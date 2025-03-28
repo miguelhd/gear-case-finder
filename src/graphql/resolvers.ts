@@ -1,6 +1,6 @@
 // Enhanced GraphQL resolvers with improved MongoDB connection handling
 import mongoose from 'mongoose';
-import { AudioGear, Case, GearCaseMatch } from '../lib/models/gear-models';
+import { AudioGear, Case, GearCaseMatch, AudioGearModel, CaseModel, GearCaseMatchModel } from '../lib/models/gear-models';
 import { connectToMongoDB, collectionExists } from '../lib/mongodb';
 
 // Define interface for GearCaseMatch document from MongoDB
@@ -112,8 +112,8 @@ export const resolvers = {
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Use find instead of aggregate for simpler debugging
-        const items = await AudioGear.find()
+        // Use find with empty filter object to avoid TypeScript errors
+        const items = await AudioGear.find({})
           .skip(skip)
           .limit(limit)
           .lean()
@@ -184,7 +184,7 @@ export const resolvers = {
         const query: Record<string, any> = {};
         
         if (filter.search) {
-          query.$or = [
+          query['$or'] = [
             { name: { $regex: filter.search, $options: 'i' } },
             { brand: { $regex: filter.search, $options: 'i' } },
             { description: { $regex: filter.search, $options: 'i' } }
@@ -192,33 +192,33 @@ export const resolvers = {
         }
         
         if (filter.categories && filter.categories.length > 0) {
-          query.category = { $in: filter.categories };
+          query['category'] = { $in: filter.categories };
         }
         
         if (filter.brands && filter.brands.length > 0) {
-          query.brand = { $in: filter.brands };
+          query['brand'] = { $in: filter.brands };
         }
         
         if (filter.types && filter.types.length > 0) {
-          query.type = { $in: filter.types };
+          query['type'] = { $in: filter.types };
         }
         
         if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
-          query.price = {};
+          query['price'] = {};
           if (filter.minPrice !== undefined) {
-            query.price.$gte = filter.minPrice;
+            query['price']['$gte'] = filter.minPrice;
           }
           if (filter.maxPrice !== undefined) {
-            query.price.$lte = filter.maxPrice;
+            query['price']['$lte'] = filter.maxPrice;
           }
         }
         
         if (filter.minRating !== undefined) {
-          query.rating = { $gte: filter.minRating };
+          query['rating'] = { $gte: filter.minRating };
         }
         
         if (filter.inStock !== undefined) {
-          query.inStock = filter.inStock;
+          query['inStock'] = filter.inStock;
         }
         
         // Determine sort order
@@ -289,8 +289,8 @@ export const resolvers = {
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Use find instead of aggregate for simpler debugging
-        const items = await Case.find()
+        // Use find with empty filter object to avoid TypeScript errors
+        const items = await Case.find({})
           .skip(skip)
           .limit(limit)
           .lean()
@@ -361,7 +361,7 @@ export const resolvers = {
         const query: Record<string, any> = {};
         
         if (filter.search) {
-          query.$or = [
+          query['$or'] = [
             { name: { $regex: filter.search, $options: 'i' } },
             { brand: { $regex: filter.search, $options: 'i' } },
             { description: { $regex: filter.search, $options: 'i' } }
@@ -369,45 +369,45 @@ export const resolvers = {
         }
         
         if (filter.brands && filter.brands.length > 0) {
-          query.brand = { $in: filter.brands };
+          query['brand'] = { $in: filter.brands };
         }
         
         if (filter.types && filter.types.length > 0) {
-          query.type = { $in: filter.types };
+          query['type'] = { $in: filter.types };
         }
         
         if (filter.protectionLevels && filter.protectionLevels.length > 0) {
-          query.protectionLevel = { $in: filter.protectionLevels };
+          query['protectionLevel'] = { $in: filter.protectionLevels };
         }
         
         if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
-          query.price = {};
+          query['price'] = {};
           if (filter.minPrice !== undefined) {
-            query.price.$gte = filter.minPrice;
+            query['price']['$gte'] = filter.minPrice;
           }
           if (filter.maxPrice !== undefined) {
-            query.price.$lte = filter.maxPrice;
+            query['price']['$lte'] = filter.maxPrice;
           }
         }
         
         if (filter.minRating !== undefined) {
-          query.rating = { $gte: filter.minRating };
+          query['rating'] = { $gte: filter.minRating };
         }
         
         if (filter.inStock !== undefined) {
-          query.inStock = filter.inStock;
+          query['inStock'] = filter.inStock;
         }
         
         if (filter.waterproof !== undefined) {
-          query.waterproof = filter.waterproof;
+          query['waterproof'] = filter.waterproof;
         }
         
         if (filter.shockproof !== undefined) {
-          query.shockproof = filter.shockproof;
+          query['shockproof'] = filter.shockproof;
         }
         
         if (filter.dustproof !== undefined) {
-          query.dustproof = filter.dustproof;
+          query['dustproof'] = filter.dustproof;
         }
         
         // Determine sort order
@@ -482,15 +482,15 @@ export const resolvers = {
         const query: Record<string, any> = {};
         
         if (filter.gearId) {
-          query.gearId = filter.gearId;
+          query['gearId'] = filter.gearId;
         }
         
         if (filter.caseId) {
-          query.caseId = filter.caseId;
+          query['caseId'] = filter.caseId;
         }
         
         if (filter.minScore !== undefined) {
-          query.compatibilityScore = { $gte: filter.minScore };
+          query['compatibilityScore'] = { $gte: filter.minScore };
         }
         
         // Determine sort order
