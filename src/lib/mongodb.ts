@@ -14,7 +14,7 @@ const MAX_CONNECTION_ATTEMPTS = 5;
 const CONNECTION_RETRY_DELAY = 1000; // ms
 
 // Function to wait for a specified time
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Enhanced connection function with retry logic and proper state handling
 export async function connectToMongoDB() {
@@ -41,10 +41,10 @@ export async function connectToMongoDB() {
     connectionAttempts++;
     
     console.log(`MongoDB connection attempt ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS}`);
-    console.log(`Attempting to connect to MongoDB with URI: ${process.env.MONGODB_URI?.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')}`);
+    console.log(`Attempting to connect to MongoDB with URI: ${process.env['MONGODB_URI']?.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')}`);
     
     // Connect with timeout
-    const connectionPromise = mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder");
+    const connectionPromise = mongoose.connect(process.env['MONGODB_URI'] || "mongodb://localhost:27017/musician-case-finder");
     
     // Set a timeout for the connection attempt
     const timeoutPromise = new Promise((_, reject) => {
@@ -94,7 +94,7 @@ export async function connectToMongoDB() {
 }
 
 // Function to safely check if a collection exists
-export async function collectionExists(collectionName) {
+export async function collectionExists(collectionName: string) {
   try {
     // First ensure we're connected
     await connectToMongoDB();
@@ -136,7 +136,7 @@ export async function collectionExists(collectionName) {
 
 // Set up connection monitoring
 function setupConnectionMonitoring() {
-  if (global.mongoConnectionMonitored) {
+  if ((global as any).mongoConnectionMonitored) {
     return;
   }
   
@@ -161,7 +161,7 @@ function setupConnectionMonitoring() {
     process.exit(0);
   });
   
-  global.mongoConnectionMonitored = true;
+  (global as any).mongoConnectionMonitored = true;
   console.log('MongoDB connection monitoring initialized');
 }
 

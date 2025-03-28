@@ -182,6 +182,6 @@ const AffiliateSchema = new Schema({
 }, { timestamps: true });
 
 // Create and export models
-export const User = models.User || model<IUser>('User', UserSchema);
-export const Content = models.Content || model<IContent>('Content', ContentSchema);
-export const Analytics = models.Analytics || model<IAnalytics>('Analytics', AnalyticsSchema);
+export const User = models['User'] || model<IUser>('User', UserSchema);
+export const Content = models['Content'] || model<IContent>('Content', ContentSchema);
+export const Analytics = models['Analytics'] || model<IAnalytics>('Analytics', AnalyticsSchema);

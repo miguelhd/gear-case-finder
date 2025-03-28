@@ -1,6 +1,6 @@
 import axios from 'axios';
 import cheerio from 'cheerio';
-import { ScrapedProduct, ScrapedProductDetails } from '../models/scraper-models';
+import { IScrapedProduct, IScrapedProductDetails } from '../models/scraper-models';
 import { normalizeProductTitle } from '../utils/string-utils';
 
 export class AliExpressScraper {

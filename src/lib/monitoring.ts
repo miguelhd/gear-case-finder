@@ -87,7 +87,7 @@ export function getScraperHealth(): ScraperHealth {
   
   // Get MongoDB connection status from the monitoring system
   const dbStatus: ScraperStatus = 
-    process.env.MONGODB_URI ? 'healthy' : 'warning';
+    process.env['MONGODB_URI'] ? 'healthy' : 'warning';
   
   return {
     status: dbStatus, // Overall status matches database connection status

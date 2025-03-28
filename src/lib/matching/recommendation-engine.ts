@@ -1,5 +1,5 @@
 import { IAudioGear, ICase } from '../models/gear-models';
-import { ProductMatcher } from './product-matcher';
+import { ProductMatcher, MatchingOptions } from './product-matcher';
 import { FeatureMatcher } from './feature-matcher';
 
 export interface RecommendationOptions {
@@ -103,9 +103,9 @@ export class RecommendationEngine {
     const maxPrice = primaryMatch.price! * 0.9;
     
     // Find cases with similar protection level but lower price
-    const matchingOptions = {
-      minCompatibilityScore: options.minCompatibilityScore,
-      preferredProtectionLevel: primaryMatch.protectionLevel,
+    const matchingOptions: MatchingOptions = {
+      minCompatibilityScore: options.minCompatibilityScore ?? 70,
+      preferredProtectionLevel: primaryMatch.protectionLevel ?? undefined,
       maxPriceUSD: maxPrice,
       maxResults: 3,
       sortBy: 'price' as const,

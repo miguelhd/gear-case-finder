@@ -2,18 +2,18 @@ import { IAudioGear, ICase, GearCaseMatch, AudioGear, Case } from '../models/gea
 import mongoose from 'mongoose';
 
 export interface MatchingOptions {
-  minCompatibilityScore?: number;
-  preferredProtectionLevel?: 'low' | 'medium' | 'high';
-  maxPriceUSD?: number;
-  preferredFeatures?: string[];
-  preferredBrands?: string[];
-  allowWaterproof?: boolean;
-  allowShockproof?: boolean;
-  requireHandle?: boolean;
-  requireWheels?: boolean;
-  maxResults?: number;
-  sortBy?: 'compatibilityScore' | 'price' | 'rating';
-  sortDirection?: 'asc' | 'desc';
+  minCompatibilityScore?: number | undefined;
+  preferredProtectionLevel?: 'low' | 'medium' | 'high' | undefined;
+  maxPriceUSD?: number | undefined;
+  preferredFeatures?: string[] | undefined;
+  preferredBrands?: string[] | undefined;
+  allowWaterproof?: boolean | undefined;
+  allowShockproof?: boolean | undefined;
+  requireHandle?: boolean | undefined;
+  requireWheels?: boolean | undefined;
+  maxResults?: number | undefined;
+  sortBy?: 'compatibilityScore' | 'price' | 'rating' | undefined;
+  sortDirection?: 'asc' | 'desc' | undefined;
 }
 
 export class ProductMatcher {
@@ -124,9 +124,9 @@ export class ProductMatcher {
     const limitedResults = filteredCases.slice(0, mergedOptions.maxResults);
 
     // Save the matches to the database
-    await this.saveMatches(gearItem, limitedResults);
+    await this.saveMatches(gearItem, limitedResults as Array<ICase & { compatibilityScore: number }>);
 
-    return limitedResults;
+    return limitedResults as Array<ICase & { compatibilityScore: number }>;
   }
 
   /**
@@ -364,9 +364,9 @@ export class ProductMatcher {
       gear: match.gearId,
       case: match.caseId,
       compatibilityScore: match.compatibilityScore,
-      dimensionFit: match.dimensionFit,
-      priceCategory: match.priceCategory,
-      protectionLevel: match.protectionLevel
+      dimensionFit: match.dimensionFit as any,
+      priceCategory: match.priceCategory as string | undefined,
+      protectionLevel: match.protectionLevel as string | undefined
     }));
   }
 }

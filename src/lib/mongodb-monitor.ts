@@ -8,7 +8,7 @@ import path from 'path';
 // Configuration - Use /tmp directory in production environment
 const LOG_DIR = process.env.NODE_ENV === 'production' 
   ? '/tmp/logs' 
-  : (process.env.LOG_DIR || './logs');
+  : (process.env['LOG_DIR'] || './logs');
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_LOG_FILES = 5;
 const CHECK_INTERVAL = 60 * 1000; // 1 minute
@@ -66,7 +66,7 @@ function logToFile(message: string) {
 
 // Check MongoDB connection status
 async function checkMongoDBConnection() {
-  const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/musician-case-finder";
+  const uri = process.env['MONGODB_URI'] || "mongodb://localhost:27017/musician-case-finder";
   const sanitizedUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
   
   logToFile(`Checking MongoDB connection to: ${sanitizedUri}`);
@@ -129,7 +129,7 @@ async function checkMongoDBConnection() {
     
     // Get server info
     const serverInfo = await client.db().admin().serverInfo();
-    logToFile(`MongoDB server version: ${serverInfo.version}`);
+    logToFile(`MongoDB server version: ${serverInfo['version']}`);
     
     await client.close();
     logToFile('MongoClient connection closed');

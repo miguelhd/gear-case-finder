@@ -542,6 +542,21 @@ export interface IGearCaseMatch extends Document {
   negativeCount: number;
   
   /**
+   * Dimension fit information.
+   */
+  dimensionFit?: any;
+  
+  /**
+   * Price category of the case.
+   */
+  priceCategory?: string;
+  
+  /**
+   * Protection level of the case.
+   */
+  protectionLevel?: string;
+  
+  /**
    * Date when the record was created.
    */
   createdAt?: Date;
@@ -576,11 +591,11 @@ export type CaseModel = Model<ICase>;
 export type GearCaseMatchModel = Model<IGearCaseMatch>;
 
 // Create and export models with proper typing
-export const AudioGear: AudioGearModel = mongoose.models.AudioGear as AudioGearModel || 
+export const AudioGear: AudioGearModel = mongoose.models['AudioGear'] as AudioGearModel || 
   mongoose.model<IAudioGear, AudioGearModel>('AudioGear', AudioGearSchema, 'AudioGear');
 
-export const Case: CaseModel = mongoose.models.Case as CaseModel || 
+export const Case: CaseModel = mongoose.models['Case'] as CaseModel || 
   mongoose.model<ICase, CaseModel>('Case', CaseSchema, 'Case');
 
-export const GearCaseMatch: GearCaseMatchModel = mongoose.models.GearCaseMatch as GearCaseMatchModel || 
+export const GearCaseMatch: GearCaseMatchModel = mongoose.models['GearCaseMatch'] as GearCaseMatchModel || 
   mongoose.model<IGearCaseMatch, GearCaseMatchModel>('GearCaseMatch', GearCaseMatchSchema, 'GearCaseMatch');
