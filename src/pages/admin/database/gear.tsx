@@ -1,58 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
-import { IAudioGear } from '../../../lib/models/gear-models';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/ui/StatusComponents';
+import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/admin/StatusComponents';
+import GearModal from '../../../components/admin/modals/GearModal';
+import DeleteConfirmationModal from '../../../components/admin/modals/DeleteConfirmationModal';
+import ImportModal from '../../../components/admin/modals/ImportModal';
 
-// Component for the Audio Gear Management page
-const AudioGearManagementPage = () => {
-  // State for audio gear data
-  const [audioGear, setAudioGear] = useState<IAudioGear[]>([]);
+const AudioGearManagementPage: React.FC = () => {
+  const [audioGear, setAudioGear] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State for pagination
+  // Filter states
+  const [categories, setCategories] = useState<Array<{ value: string; label: string }>>([]);
+  const [brands, setBrands] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedBrand, setSelectedBrand] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [pageSize] = useState<number>(10);
   
-  // State for filtering and sorting
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterCategory, setFilterCategory] = useState<string>('');
-  const [filterBrand, setFilterBrand] = useState<string>('');
+  // Sorting states
   const [sortField, setSortField] = useState<string>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortDirection, setSortDirection] = useState<string>('asc');
   
-  // State for categories and brands (for filter dropdowns)
-  const [categories, setCategories] = useState<string[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
+  // Modal states
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [selectedGear, setSelectedGear] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  // State for selected gear (for edit/delete operations)
-  const [selectedGear, setSelectedGear] = useState<IAudioGear | null>(null);
+  // Calculate pagination values
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
   
-  // State for modal visibility
-  const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  // Generate page numbers for pagination
+  const generatePageNumbers = () => {
+    const pageNumbers: (number | string)[] = [];
+    const maxPagesToShow = 5;
+    
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      pageNumbers.push(1);
+      
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (startPage > 2) {
+        pageNumbers.push('...');
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      if (endPage < totalPages - 1) {
+        pageNumbers.push('...');
+      }
+      
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
+  
+  const pageNumbers = generatePageNumbers();
+  
+  // Fetch filter options
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const response = await fetch('/api/admin/gear/categories-brands');
+        if (!response.ok) {
+          throw new Error('Failed to fetch filter options');
+        }
+        const data = await response.json();
+        
+        setCategories(data.categories.map((category: string) => ({ 
+          value: category, 
+          label: category 
+        })));
+        
+        setBrands(data.brands.map((brand: string) => ({ 
+          value: brand, 
+          label: brand 
+        })));
+      } catch (err) {
+        console.error('Error fetching filter options:', err);
+        // Don't set error state here to avoid blocking the main data fetch
+      }
+    };
+    
+    fetchFilterOptions();
+  }, []);
   
   // Fetch audio gear data
   useEffect(() => {
     const fetchAudioGear = async () => {
       setLoading(true);
+      setError(null);
+      
       try {
-        // Build query parameters
-        const params = new URLSearchParams();
-        params.append('page', currentPage.toString());
-        params.append('limit', itemsPerPage.toString());
-        params.append('sort', sortField);
-        params.append('direction', sortDirection);
+        const queryParams = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: pageSize.toString(),
+          sortField,
+          sortDirection
+        });
         
-        if (searchTerm) params.append('search', searchTerm);
-        if (filterCategory) params.append('category', filterCategory);
-        if (filterBrand) params.append('brand', filterBrand);
+        if (selectedCategory) {
+          queryParams.append('category', selectedCategory);
+        }
         
-        // Fetch data from API
-        const response = await fetch(`/api/admin/gear?${params.toString()}`);
+        if (selectedBrand) {
+          queryParams.append('brand', selectedBrand);
+        }
+        
+        if (searchQuery) {
+          queryParams.append('search', searchQuery);
+        }
+        
+        const response = await fetch(`/api/admin/gear?${queryParams.toString()}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch audio gear data');
@@ -60,459 +136,532 @@ const AudioGearManagementPage = () => {
         
         const data = await response.json();
         setAudioGear(data.items);
-        setTotalItems(data.total);
-        setLoading(false);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        setLoading(false);
-      }
-    };
-    
-    // For now, use mock data until we implement the API endpoint
-    const mockData = [
-      {
-        _id: '1',
-        name: 'Moog Subsequent 37',
-        brand: 'Moog',
-        category: 'Synthesizer',
-        type: 'Analog Synthesizer',
-        dimensions: {
-          length: 22.5,
-          width: 14.8,
-          height: 5.1,
-          unit: 'in'
-        },
-        weight: {
-          value: 22,
-          unit: 'lb'
-        },
-        imageUrl: 'https://cdn.shopify.com/s/files/1/0657/6821/products/Moog_Subsequent37_1024x1024.jpg',
-        productUrl: 'https://www.moogmusic.com/products/subsequent-37',
-        description: 'Analog synthesizer with 37 keys',
-        popularity: 95,
-        releaseYear: 2017,
-        discontinued: false
-      },
-      {
-        _id: '2',
-        name: 'Roland TR-8S',
-        brand: 'Roland',
-        category: 'Drum Machine',
-        type: 'Digital Drum Machine',
-        dimensions: {
-          length: 16.3,
-          width: 10.4,
-          height: 2.6,
-          unit: 'in'
-        },
-        weight: {
-          value: 4.9,
-          unit: 'lb'
-        },
-        imageUrl: 'https://static.roland.com/assets/images/products/gallery/tr-8s_top_gal.jpg',
-        productUrl: 'https://www.roland.com/global/products/tr-8s/',
-        description: 'Rhythm performer with sample import',
-        popularity: 90,
-        releaseYear: 2018,
-        discontinued: false
-      },
-      {
-        _id: '3',
-        name: 'Elektron Digitakt',
-        brand: 'Elektron',
-        category: 'Drum Machine',
-        type: 'Digital Drum Machine',
-        dimensions: {
-          length: 8.5,
-          width: 7.1,
-          height: 2.2,
-          unit: 'in'
-        },
-        weight: {
-          value: 4.0,
-          unit: 'lb'
-        },
-        imageUrl: 'https://www.elektron.se/wp-content/uploads/2017/01/Digitakt_Angle_1600.jpg',
-        productUrl: 'https://www.elektron.se/products/digitakt/',
-        description: 'Digital drum machine and sampler',
-        popularity: 88,
-        releaseYear: 2017,
-        discontinued: false
-      }
-    ];
-    
-    // Extract unique categories and brands for filters
-    const fetchCategoriesAndBrands = async () => {
-      try {
-        const response = await fetch('/api/admin/gear/categories-brands');
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories and brands');
-        }
-        const data = await response.json();
-        setCategories(data.categories);
-        setBrands(data.brands);
+        setTotalItems(data.totalItems);
+        setTotalPages(data.totalPages);
       } catch (err) {
-        console.error('Error fetching categories and brands:', err);
-        // Fallback to extracting from current items if API fails
-        const uniqueCategories = [...new Set(audioGear.map(item => item.category))];
-        const uniqueBrands = [...new Set(audioGear.map(item => item.brand))];
-        setCategories(uniqueCategories);
-        setBrands(uniqueBrands);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setAudioGear([]);
+        setTotalItems(0);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
       }
     };
-
-    // Fetch audio gear data
-    fetchAudioGear();
     
-    // Fetch categories and brands for filters
-    fetchCategoriesAndBrands();
-  }, [currentPage, itemsPerPage, searchTerm, filterCategory, filterBrand, sortField, sortDirection]);
+    fetchAudioGear();
+  }, [currentPage, pageSize, sortField, sortDirection, selectedCategory, selectedBrand, searchQuery]);
   
-  // Handle page change
+  // Handle filter changes
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(e.target.value);
+    setCurrentPage(1);
+  };
+  
+  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedBrand(e.target.value);
+    setCurrentPage(1);
+  };
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+  
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+  };
+  
+  // Handle sorting
+  const handleSort = (field: string) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+  
+  // Handle pagination
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
   
-  // Handle items per page change
-  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setItemsPerPage(parseInt(e.target.value));
-    setCurrentPage(1); // Reset to first page when changing items per page
-  };
-  
-  // Handle search
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
-  };
-  
-  // Handle category filter change
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterCategory(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle brand filter change
-  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterBrand(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle sort change
-  const handleSortChange = (field: string) => {
-    if (field === sortField) {
-      // Toggle sort direction if clicking the same field
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Set new sort field and default to ascending
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-  
-  // Handle add gear
+  // Handle modal actions
   const handleAddGear = () => {
-    setShowAddModal(true);
+    setSelectedGear(null);
+    setIsAddModalOpen(true);
   };
   
-  // Handle edit gear
-  const handleEditGear = (gear: IAudioGear) => {
+  const handleEditGear = (gear: any) => {
     setSelectedGear(gear);
-    setShowEditModal(true);
+    setIsEditModalOpen(true);
   };
   
-  // Handle delete gear
-  const handleDeleteGear = (gear: IAudioGear) => {
+  const handleDeleteGear = (gear: any) => {
     setSelectedGear(gear);
-    setShowDeleteModal(true);
+    setIsDeleteModalOpen(true);
   };
   
-  // Handle import
-  const handleImport = () => {
-    setShowImportModal(true);
+  const handleImportGear = () => {
+    setIsImportModalOpen(true);
   };
   
-  // Handle export
-  const handleExport = async () => {
+  // Handle API operations
+  const handleSaveGear = async (gear: any) => {
+    setIsProcessing(true);
+    
     try {
-      // In a real implementation, this would call an API endpoint to generate the export
-      alert('Export functionality will be implemented in a future update.');
+      const url = gear._id ? `/api/admin/gear?id=${gear._id}` : '/api/admin/gear';
+      const method = gear._id ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(gear)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save audio gear');
+      }
+      
+      // Refresh data
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        sortField,
+        sortDirection
+      });
+      
+      if (selectedCategory) {
+        queryParams.append('category', selectedCategory);
+      }
+      
+      if (selectedBrand) {
+        queryParams.append('brand', selectedBrand);
+      }
+      
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      
+      const refreshResponse = await fetch(`/api/admin/gear?${queryParams.toString()}`);
+      
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh audio gear data');
+      }
+      
+      const refreshData = await refreshResponse.json();
+      setAudioGear(refreshData.items);
+      setTotalItems(refreshData.totalItems);
+      setTotalPages(refreshData.totalPages);
+      
+      // Close modals
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
     } catch (err) {
-      setError('Failed to export data');
+      console.error('Error saving audio gear:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsProcessing(false);
     }
   };
   
-  // Calculate pagination
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
-  
-  // Generate page numbers for pagination
-  const pageNumbers: (number | string)[] = [];
-  const maxPageButtons = 5;
-  
-  if (totalPages <= maxPageButtons) {
-    // Show all pages if there are fewer than maxPageButtons
-    for (let i = 1; i <= totalPages; i++) {
-      pageNumbers.push(i);
+  const handleDeleteConfirm = async () => {
+    if (!selectedGear) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      const response = await fetch(`/api/admin/gear?id=${selectedGear._id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete audio gear');
+      }
+      
+      // Refresh data
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        sortField,
+        sortDirection
+      });
+      
+      if (selectedCategory) {
+        queryParams.append('category', selectedCategory);
+      }
+      
+      if (selectedBrand) {
+        queryParams.append('brand', selectedBrand);
+      }
+      
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      
+      const refreshResponse = await fetch(`/api/admin/gear?${queryParams.toString()}`);
+      
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh audio gear data');
+      }
+      
+      const refreshData = await refreshResponse.json();
+      setAudioGear(refreshData.items);
+      setTotalItems(refreshData.totalItems);
+      setTotalPages(refreshData.totalPages);
+      
+      // Close modal
+      setIsDeleteModalOpen(false);
+    } catch (err) {
+      console.error('Error deleting audio gear:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsProcessing(false);
     }
-  } else {
-    // Show a subset of pages with ellipsis
-    if (currentPage <= 3) {
-      // Near the start
-      for (let i = 1; i <= 4; i++) {
-        pageNumbers.push(i);
+  };
+  
+  const handleImport = async (file: File) => {
+    setIsProcessing(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/admin/gear/import', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to import audio gear data');
       }
-      pageNumbers.push('...');
-      pageNumbers.push(totalPages);
-    } else if (currentPage >= totalPages - 2) {
-      // Near the end
-      pageNumbers.push(1);
-      pageNumbers.push('...');
-      for (let i = totalPages - 3; i <= totalPages; i++) {
-        pageNumbers.push(i);
+      
+      // Refresh data
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        sortField,
+        sortDirection
+      });
+      
+      if (selectedCategory) {
+        queryParams.append('category', selectedCategory);
       }
-    } else {
-      // In the middle
-      pageNumbers.push(1);
-      pageNumbers.push('...');
-      for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-        pageNumbers.push(i);
+      
+      if (selectedBrand) {
+        queryParams.append('brand', selectedBrand);
       }
-      pageNumbers.push('...');
-      pageNumbers.push(totalPages);
+      
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      
+      const refreshResponse = await fetch(`/api/admin/gear?${queryParams.toString()}`);
+      
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh audio gear data');
+      }
+      
+      const refreshData = await refreshResponse.json();
+      setAudioGear(refreshData.items);
+      setTotalItems(refreshData.totalItems);
+      setTotalPages(refreshData.totalPages);
+      
+      // Close modal
+      setIsImportModalOpen(false);
+    } catch (err) {
+      console.error('Error importing audio gear:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsProcessing(false);
     }
-  }
+  };
   
   return (
-    <AdminLayout title="Audio Gear Management" subtitle="View, add, edit, and delete audio gear items">
-      {/* Filters and Actions */}
-      <div className="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-            {/* Search */}
-            <div className="w-full md:w-1/3">
-              <label htmlFor="search" className="sr-only">Search</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                  </svg>
+    <AdminLayout title="Audio Gear Management" subtitle="Manage audio gear in the database">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <h1 className="text-xl font-semibold text-gray-900">Audio Gear Management</h1>
+            <p className="mt-2 text-sm text-gray-700">
+              A list of all audio gear in the database with their details.
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none space-x-2">
+            <button
+              type="button"
+              onClick={handleImportGear}
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-gray-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 sm:w-auto"
+            >
+              Import
+            </button>
+            <button
+              type="button"
+              onClick={handleAddGear}
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+            >
+              Add Gear
+            </button>
+          </div>
+        </div>
+        
+        {/* Filters */}
+        <div className="mt-4 bg-white shadow rounded-lg p-4">
+          <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-3 sm:gap-x-4">
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                Category
+              </label>
+              <select
+                id="category"
+                name="category"
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+              >
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="brand" className="block text-sm font-medium text-gray-700">
+                Brand
+              </label>
+              <select
+                id="brand"
+                name="brand"
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                value={selectedBrand}
+                onChange={handleBrandChange}
+              >
+                <option value="">All Brands</option>
+                {brands.map((brand) => (
+                  <option key={brand.value} value={brand.value}>
+                    {brand.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700">
+                Search
+              </label>
+              <form onSubmit={handleSearchSubmit}>
+                <div className="mt-1 flex rounded-md shadow-sm">
+                  <input
+                    type="text"
+                    name="search"
+                    id="search"
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    placeholder="Search by name"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                  />
+                  <button
+                    type="submit"
+                    className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Search
+                  </button>
                 </div>
-                <input
-                  id="search"
-                  name="search"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Search audio gear"
-                  type="search"
-                  value={searchTerm}
-                  onChange={handleSearch}
-                />
-              </div>
-            </div>
-            
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-              {/* Category Filter */}
-              <div>
-                <label htmlFor="category" className="sr-only">Category</label>
-                <select
-                  id="category"
-                  name="category"
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filterCategory}
-                  onChange={handleCategoryChange}
-                >
-                  <option value="">All Categories</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Brand Filter */}
-              <div>
-                <label htmlFor="brand" className="sr-only">Brand</label>
-                <select
-                  id="brand"
-                  name="brand"
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filterBrand}
-                  onChange={handleBrandChange}
-                >
-                  <option value="">All Brands</option>
-                  {brands.map(brand => (
-                    <option key={brand} value={brand}>{brand}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            {/* Actions */}
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                onClick={handleAddGear}
-              >
-                Add Gear
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                onClick={handleImport}
-              >
-                Import
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                onClick={handleExport}
-              >
-                Export
-              </button>
+              </form>
             </div>
           </div>
         </div>
-      </div>
-      
-      {/* Audio Gear Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        {loading ? (
-          <LoadingSpinner />
-        ) : error ? (
-          <ErrorMessage message={error} />
-        ) : audioGear.length === 0 ? (
+        
+        {/* Loading state */}
+        {loading && <LoadingSpinner />}
+        
+        {/* Error state */}
+        {!loading && error && <ErrorMessage message={error} />}
+        
+        {/* Empty state */}
+        {!loading && !error && audioGear.length === 0 && (
           <EmptyState 
-            message="No audio gear found. Try adjusting your filters or add some gear."
-            actionLabel="Add Audio Gear"
-            onAction={handleAddGear}
+            message="No audio gear found" 
+            actionLabel="Add Gear" 
+            onAction={handleAddGear} 
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('name')}
-                  >
-                    <div className="flex items-center">
-                      <span>Name</span>
-                      {sortField === 'name' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('brand')}
-                  >
-                    <div className="flex items-center">
-                      <span>Brand</span>
-                      {sortField === 'brand' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('category')}
-                  >
-                    <div className="flex items-center">
-                      <span>Category</span>
-                      {sortField === 'category' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Dimensions
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('popularity')}
-                  >
-                    <div className="flex items-center">
-                      <span>Popularity</span>
-                      {sortField === 'popularity' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {audioGear.map((gear) => (
-                  <tr key={gear._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          {gear.imageUrl ? (
-                            <img className="h-10 w-10 rounded-full object-cover" src={gear.imageUrl} alt={gear.name} />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <svg className="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{gear.name}</div>
-                          <div className="text-sm text-gray-500">{gear.type}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{gear.brand}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        {gear.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {gear.dimensions.length} x {gear.dimensions.width} x {gear.dimensions.height} {gear.dimensions.unit}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {gear.popularity ? `${gear.popularity}/100` : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditGear(gear)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGear(gear)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        )}
+        
+        {/* Data table */}
+        {!loading && !error && audioGear.length > 0 && (
+          <div className="mt-8 flex flex-col">
+            <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+              <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-300">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('name')}
+                          >
+                            Name
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'name' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('brand')}
+                          >
+                            Brand
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'brand' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('category')}
+                          >
+                            Category
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'category' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          Dimensions (mm)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('weight')}
+                          >
+                            Weight (g)
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'weight' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="relative py-3.5 pl-3 pr-4 sm:pr-6"
+                        >
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {audioGear.map((gear) => (
+                        <tr key={gear._id}>
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                            {gear.name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{gear.brand}</td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{gear.category}</td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {gear.dimensions.width} × {gear.dimensions.height} × {gear.dimensions.depth}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{gear.weight}</td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <button
+                              onClick={() => handleEditGear(gear)}
+                              className="text-indigo-600 hover:text-indigo-900 mr-4"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteGear(gear)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         
@@ -591,8 +740,45 @@ const AudioGearManagementPage = () => {
         )}
       </div>
       
-      {/* Add/Edit/Delete/Import Modals will be implemented here */}
-      {/* These will be implemented in the next phase */}
+      {/* Add/Edit/Delete/Import Modals */}
+      <GearModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleSaveGear}
+        categories={categories}
+        brands={brands}
+        isProcessing={isProcessing}
+        mode="add"
+      />
+      
+      <GearModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveGear}
+        gear={selectedGear}
+        categories={categories}
+        brands={brands}
+        isProcessing={isProcessing}
+        mode="edit"
+      />
+      
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        itemName={selectedGear?.name || ''}
+        itemType="Audio Gear"
+        isDeleting={isProcessing}
+      />
+      
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImport}
+        itemType="Audio Gear"
+        isProcessing={isProcessing}
+        acceptedFileTypes=".json,.csv"
+      />
     </AdminLayout>
   );
 };

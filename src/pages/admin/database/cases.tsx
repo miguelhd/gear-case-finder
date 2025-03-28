@@ -1,714 +1,667 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
-import { ICase } from '../../../lib/models/gear-models';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/ui/StatusComponents';
+import { LoadingSpinner, ErrorMessage, EmptyState } from '../../../components/admin/StatusComponents';
+import CaseModal from '../../../components/admin/modals/CaseModal';
+import DeleteConfirmationModal from '../../../components/admin/modals/DeleteConfirmationModal';
+import ImportModal from '../../../components/admin/modals/ImportModal';
 
-// Component for the Case Management page
-const CaseManagementPage = () => {
-  // State for case data
-  const [cases, setCases] = useState<ICase[]>([]);
+const CaseManagementPage: React.FC = () => {
+  const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State for pagination
+  // Filter states
+  const [types, setTypes] = useState<Array<{ value: string; label: string }>>([]);
+  const [brands, setBrands] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedBrand, setSelectedBrand] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [pageSize] = useState<number>(10);
   
-  // State for filtering and sorting
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterType, setFilterType] = useState<string>('');
-  const [filterBrand, setFilterBrand] = useState<string>('');
-  const [filterProtectionLevel, setFilterProtectionLevel] = useState<string>('');
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
+  // Sorting states
   const [sortField, setSortField] = useState<string>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortDirection, setSortDirection] = useState<string>('asc');
   
-  // State for types, brands, and protection levels (for filter dropdowns)
-  const [types, setTypes] = useState<string[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [protectionLevels, setProtectionLevels] = useState<string[]>(['low', 'medium', 'high']);
+  // Modal states
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [selectedCase, setSelectedCase] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   
-  // State for selected case (for edit/delete operations)
-  const [selectedCase, setSelectedCase] = useState<ICase | null>(null);
+  // Calculate pagination values
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
   
-  // State for modal visibility
-  const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [showEditModal, setShowEditModal] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  // Generate page numbers for pagination
+  const generatePageNumbers = () => {
+    const pageNumbers: (number | string)[] = [];
+    const maxPagesToShow = 5;
+    
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      pageNumbers.push(1);
+      
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (startPage > 2) {
+        pageNumbers.push('...');
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      if (endPage < totalPages - 1) {
+        pageNumbers.push('...');
+      }
+      
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
   
-  // Fetch case data
+  const pageNumbers = generatePageNumbers();
+  
+  // Fetch filter options
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const response = await fetch('/api/admin/cases/types-brands');
+        if (!response.ok) {
+          throw new Error('Failed to fetch filter options');
+        }
+        const data = await response.json();
+        
+        setTypes(data.types.map((type: string) => ({ 
+          value: type, 
+          label: type 
+        })));
+        
+        setBrands(data.brands.map((brand: string) => ({ 
+          value: brand, 
+          label: brand 
+        })));
+      } catch (err) {
+        console.error('Error fetching filter options:', err);
+        // Don't set error state here to avoid blocking the main data fetch
+      }
+    };
+    
+    fetchFilterOptions();
+  }, []);
+  
+  // Fetch cases data
   useEffect(() => {
     const fetchCases = async () => {
       setLoading(true);
+      setError(null);
+      
       try {
-        // Build query parameters
-        const params = new URLSearchParams();
-        params.append('page', currentPage.toString());
-        params.append('limit', itemsPerPage.toString());
-        params.append('sort', sortField);
-        params.append('direction', sortDirection);
+        const queryParams = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: pageSize.toString(),
+          sortField,
+          sortDirection
+        });
         
-        if (searchTerm) params.append('search', searchTerm);
-        if (filterType) params.append('type', filterType);
-        if (filterBrand) params.append('brand', filterBrand);
-        if (filterProtectionLevel) params.append('protectionLevel', filterProtectionLevel);
-        if (minPrice) params.append('minPrice', minPrice);
-        if (maxPrice) params.append('maxPrice', maxPrice);
+        if (selectedType) {
+          queryParams.append('type', selectedType);
+        }
         
-        // Fetch data from API
-        const response = await fetch(`/api/admin/cases?${params.toString()}`);
+        if (selectedBrand) {
+          queryParams.append('brand', selectedBrand);
+        }
+        
+        if (searchQuery) {
+          queryParams.append('search', searchQuery);
+        }
+        
+        const response = await fetch(`/api/admin/cases?${queryParams.toString()}`);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch case data');
+          throw new Error('Failed to fetch cases data');
         }
         
         const data = await response.json();
         setCases(data.items);
-        setTotalItems(data.total);
-        setLoading(false);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        setLoading(false);
-      }
-    };
-    
-    // For now, use mock data until we implement the API endpoint
-    const mockData = [
-      {
-        _id: '1',
-        name: 'Pelican 1510 Case',
-        brand: 'Pelican',
-        type: 'Hard Case',
-        dimensions: {
-          interior: {
-            length: 19.75,
-            width: 11.00,
-            height: 7.60,
-            unit: 'in'
-          },
-          exterior: {
-            length: 22.00,
-            width: 13.81,
-            height: 9.00,
-            unit: 'in'
-          }
-        },
-        internalDimensions: {
-          length: 19.75,
-          width: 11.00,
-          height: 7.60,
-          unit: 'in'
-        },
-        externalDimensions: {
-          length: 22.00,
-          width: 13.81,
-          height: 9.00,
-          unit: 'in'
-        },
-        weight: {
-          value: 13.65,
-          unit: 'lb'
-        },
-        features: ['Watertight', 'Crushproof', 'Dustproof'],
-        price: 209.95,
-        currency: 'USD',
-        rating: 4.8,
-        reviewCount: 1245,
-        imageUrl: 'https://www.pelican.com/media/catalog/product/cache/e6334a4966a1e6c5b889ad49e2b0d69f/1/5/1510-case-black_3.jpg',
-        productUrl: 'https://www.pelican.com/us/en/product/cases/carry-on-case/1510',
-        description: 'Carry-on hard case with wheels and extendable handle',
-        protectionLevel: 'high',
-        waterproof: true,
-        shockproof: true,
-        hasPadding: true,
-        hasCompartments: true,
-        hasHandle: true,
-        hasWheels: true,
-        hasLock: true,
-        material: 'Polypropylene',
-        color: 'Black',
-        marketplace: 'Pelican',
-        availability: 'In Stock'
-      },
-      {
-        _id: '2',
-        name: 'Gator GK-49 Case',
-        brand: 'Gator',
-        type: 'Soft Case',
-        dimensions: {
-          interior: {
-            length: 49.00,
-            width: 18.00,
-            height: 6.00,
-            unit: 'in'
-          },
-          exterior: {
-            length: 50.00,
-            width: 19.00,
-            height: 7.00,
-            unit: 'in'
-          }
-        },
-        internalDimensions: {
-          length: 49.00,
-          width: 18.00,
-          height: 6.00,
-          unit: 'in'
-        },
-        externalDimensions: {
-          length: 50.00,
-          width: 19.00,
-          height: 7.00,
-          unit: 'in'
-        },
-        weight: {
-          value: 8.5,
-          unit: 'lb'
-        },
-        features: ['Padded', 'Backpack Straps', 'Accessory Pocket'],
-        price: 119.99,
-        currency: 'USD',
-        rating: 4.5,
-        reviewCount: 324,
-        imageUrl: 'https://www.gatorcases.com/wp-content/uploads/2016/04/GK-49-1.jpg',
-        productUrl: 'https://www.gatorcases.com/products/keyboard/lightweight-keyboard-cases/gk-lightweight/49-note-keyboard-case-gk-49/',
-        description: 'Lightweight keyboard case for 49-key controllers',
-        protectionLevel: 'medium',
-        waterproof: false,
-        shockproof: true,
-        hasPadding: true,
-        hasCompartments: true,
-        hasHandle: true,
-        hasWheels: false,
-        hasLock: false,
-        material: 'Nylon',
-        color: 'Black',
-        marketplace: 'Gator',
-        availability: 'In Stock'
-      },
-      {
-        _id: '3',
-        name: 'SKB 3i-2015-7 Case',
-        brand: 'SKB',
-        type: 'Hard Case',
-        dimensions: {
-          interior: {
-            length: 20.50,
-            width: 15.50,
-            height: 7.50,
-            unit: 'in'
-          },
-          exterior: {
-            length: 22.00,
-            width: 17.00,
-            height: 8.00,
-            unit: 'in'
-          }
-        },
-        internalDimensions: {
-          length: 20.50,
-          width: 15.50,
-          height: 7.50,
-          unit: 'in'
-        },
-        externalDimensions: {
-          length: 22.00,
-          width: 17.00,
-          height: 8.00,
-          unit: 'in'
-        },
-        weight: {
-          value: 12.0,
-          unit: 'lb'
-        },
-        features: ['Waterproof', 'Military-grade', 'Customizable Foam'],
-        price: 249.99,
-        currency: 'USD',
-        rating: 4.9,
-        reviewCount: 567,
-        imageUrl: 'https://skbcases.com/industrial/img/products/3i-2015-7b/3i-2015-7b-front.jpg',
-        productUrl: 'https://skbcases.com/industrial/products/3i-2015-7b.html',
-        description: 'Waterproof utility case with cubed foam',
-        protectionLevel: 'high',
-        waterproof: true,
-        shockproof: true,
-        hasPadding: true,
-        hasCompartments: false,
-        hasHandle: true,
-        hasWheels: false,
-        hasLock: true,
-        material: 'Polypropylene',
-        color: 'Black',
-        marketplace: 'SKB',
-        availability: 'In Stock'
-      }
-    ];
-    
-    // Extract unique types, brands, and protection levels for filters
-    const fetchTypesAndBrands = async () => {
-      try {
-        const response = await fetch('/api/admin/cases/types-brands');
-        if (!response.ok) {
-          throw new Error('Failed to fetch types and brands');
-        }
-        const data = await response.json();
-        setTypes(data.types);
-        setBrands(data.brands);
+        setTotalItems(data.totalItems);
+        setTotalPages(data.totalPages);
       } catch (err) {
-        console.error('Error fetching types and brands:', err);
-        // Fallback to extracting from current items if API fails
-        const uniqueTypes = [...new Set(cases.map(item => item.type))];
-        const uniqueBrands = [...new Set(cases.map(item => item.brand))];
-        setTypes(uniqueTypes);
-        setBrands(uniqueBrands);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setCases([]);
+        setTotalItems(0);
+        setTotalPages(1);
+      } finally {
+        setLoading(false);
       }
     };
-
-    // Fetch case data
-    fetchCases();
     
-    // Fetch types and brands for filters
-    fetchTypesAndBrands();
-  }, [currentPage, itemsPerPage, searchTerm, filterType, filterBrand, filterProtectionLevel, minPrice, maxPrice, sortField, sortDirection]);
+    fetchCases();
+  }, [currentPage, pageSize, sortField, sortDirection, selectedType, selectedBrand, searchQuery]);
   
-  // Handle page change
+  // Handle filter changes
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedType(e.target.value);
+    setCurrentPage(1);
+  };
+  
+  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedBrand(e.target.value);
+    setCurrentPage(1);
+  };
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+  
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+  };
+  
+  // Handle sorting
+  const handleSort = (field: string) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+  
+  // Handle pagination
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
   
-  // Handle items per page change
-  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setItemsPerPage(parseInt(e.target.value));
-    setCurrentPage(1); // Reset to first page when changing items per page
-  };
-  
-  // Handle search
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
-  };
-  
-  // Handle type filter change
-  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterType(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle brand filter change
-  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterBrand(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle protection level filter change
-  const handleProtectionLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterProtectionLevel(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle min price change
-  const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMinPrice(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle max price change
-  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMaxPrice(e.target.value);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-  
-  // Handle sort change
-  const handleSortChange = (field: string) => {
-    if (field === sortField) {
-      // Toggle sort direction if clicking the same field
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Set new sort field and default to ascending
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-  
-  // Handle add case
+  // Handle modal actions
   const handleAddCase = () => {
-    setShowAddModal(true);
+    setSelectedCase(null);
+    setIsAddModalOpen(true);
   };
   
-  // Handle edit case
-  const handleEditCase = (caseItem: ICase) => {
+  const handleEditCase = (caseItem: any) => {
     setSelectedCase(caseItem);
-    setShowEditModal(true);
+    setIsEditModalOpen(true);
   };
   
-  // Handle delete case
-  const handleDeleteCase = (caseItem: ICase) => {
+  const handleDeleteCase = (caseItem: any) => {
     setSelectedCase(caseItem);
-    setShowDeleteModal(true);
+    setIsDeleteModalOpen(true);
   };
   
-  // Handle import
-  const handleImport = () => {
-    setShowImportModal(true);
+  const handleImportCase = () => {
+    setIsImportModalOpen(true);
   };
   
-  // Handle export
-  const handleExport = async () => {
+  // Handle API operations
+  const handleSaveCase = async (caseItem: any) => {
+    setIsProcessing(true);
+    
     try {
-      // In a real implementation, this would call an API endpoint to generate the export
-      alert('Export functionality will be implemented in a future update.');
+      const url = caseItem._id ? `/api/admin/cases?id=${caseItem._id}` : '/api/admin/cases';
+      const method = caseItem._id ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(caseItem)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save case');
+      }
+      
+      // Refresh data
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        sortField,
+        sortDirection
+      });
+      
+      if (selectedType) {
+        queryParams.append('type', selectedType);
+      }
+      
+      if (selectedBrand) {
+        queryParams.append('brand', selectedBrand);
+      }
+      
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      
+      const refreshResponse = await fetch(`/api/admin/cases?${queryParams.toString()}`);
+      
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh cases data');
+      }
+      
+      const refreshData = await refreshResponse.json();
+      setCases(refreshData.items);
+      setTotalItems(refreshData.totalItems);
+      setTotalPages(refreshData.totalPages);
+      
+      // Close modals
+      setIsAddModalOpen(false);
+      setIsEditModalOpen(false);
     } catch (err) {
-      setError('Failed to export data');
+      console.error('Error saving case:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsProcessing(false);
     }
   };
   
-  // Calculate pagination
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
-  
-  // Generate page numbers for pagination
-  const pageNumbers: (number | string)[] = [];
-  const maxPageButtons = 5;
-  
-  if (totalPages <= maxPageButtons) {
-    // Show all pages if there are fewer than maxPageButtons
-    for (let i = 1; i <= totalPages; i++) {
-      pageNumbers.push(i);
+  const handleDeleteConfirm = async () => {
+    if (!selectedCase) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      const response = await fetch(`/api/admin/cases?id=${selectedCase._id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete case');
+      }
+      
+      // Refresh data
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        sortField,
+        sortDirection
+      });
+      
+      if (selectedType) {
+        queryParams.append('type', selectedType);
+      }
+      
+      if (selectedBrand) {
+        queryParams.append('brand', selectedBrand);
+      }
+      
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      
+      const refreshResponse = await fetch(`/api/admin/cases?${queryParams.toString()}`);
+      
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh cases data');
+      }
+      
+      const refreshData = await refreshResponse.json();
+      setCases(refreshData.items);
+      setTotalItems(refreshData.totalItems);
+      setTotalPages(refreshData.totalPages);
+      
+      // Close modal
+      setIsDeleteModalOpen(false);
+    } catch (err) {
+      console.error('Error deleting case:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsProcessing(false);
     }
-  } else {
-    // Show a subset of pages with ellipsis
-    if (currentPage <= 3) {
-      // Near the start
-      for (let i = 1; i <= 4; i++) {
-        pageNumbers.push(i);
+  };
+  
+  const handleImport = async (file: File) => {
+    setIsProcessing(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/admin/cases/import', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to import cases data');
       }
-      pageNumbers.push('...');
-      pageNumbers.push(totalPages);
-    } else if (currentPage >= totalPages - 2) {
-      // Near the end
-      pageNumbers.push(1);
-      pageNumbers.push('...');
-      for (let i = totalPages - 3; i <= totalPages; i++) {
-        pageNumbers.push(i);
+      
+      // Refresh data
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        sortField,
+        sortDirection
+      });
+      
+      if (selectedType) {
+        queryParams.append('type', selectedType);
       }
-    } else {
-      // In the middle
-      pageNumbers.push(1);
-      pageNumbers.push('...');
-      for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-        pageNumbers.push(i);
+      
+      if (selectedBrand) {
+        queryParams.append('brand', selectedBrand);
       }
-      pageNumbers.push('...');
-      pageNumbers.push(totalPages);
+      
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      
+      const refreshResponse = await fetch(`/api/admin/cases?${queryParams.toString()}`);
+      
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh cases data');
+      }
+      
+      const refreshData = await refreshResponse.json();
+      setCases(refreshData.items);
+      setTotalItems(refreshData.totalItems);
+      setTotalPages(refreshData.totalPages);
+      
+      // Close modal
+      setIsImportModalOpen(false);
+    } catch (err) {
+      console.error('Error importing cases:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsProcessing(false);
     }
-  }
+  };
   
   return (
-    <AdminLayout title="Case Management" subtitle="View, add, edit, and delete case items">
-      {/* Filters and Actions */}
-      <div className="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex flex-col space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-              {/* Search */}
-              <div className="w-full md:w-1/3">
-                <label htmlFor="search" className="sr-only">Search</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <input
-                    id="search"
-                    name="search"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Search cases"
-                    type="search"
-                    value={searchTerm}
-                    onChange={handleSearch}
-                  />
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  onClick={handleAddCase}
-                >
-                  Add Case
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  onClick={handleImport}
-                >
-                  Import
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  onClick={handleExport}
-                >
-                  Export
-                </button>
-              </div>
+    <AdminLayout title="Case Management" subtitle="Manage cases in the database">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <h1 className="text-xl font-semibold text-gray-900">Case Management</h1>
+            <p className="mt-2 text-sm text-gray-700">
+              A list of all cases in the database with their details.
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none space-x-2">
+            <button
+              type="button"
+              onClick={handleImportCase}
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-gray-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 sm:w-auto"
+            >
+              Import
+            </button>
+            <button
+              type="button"
+              onClick={handleAddCase}
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+            >
+              Add Case
+            </button>
+          </div>
+        </div>
+        
+        {/* Filters */}
+        <div className="mt-4 bg-white shadow rounded-lg p-4">
+          <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-3 sm:gap-x-4">
+            <div>
+              <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+                Type
+              </label>
+              <select
+                id="type"
+                name="type"
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                value={selectedType}
+                onChange={handleTypeChange}
+              >
+                <option value="">All Types</option>
+                {types.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
             </div>
             
-            {/* Additional Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              {/* Type Filter */}
-              <div>
-                <label htmlFor="type" className="block text-sm font-medium text-gray-700">Type</label>
-                <select
-                  id="type"
-                  name="type"
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filterType}
-                  onChange={handleTypeChange}
-                >
-                  <option value="">All Types</option>
-                  {types.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Brand Filter */}
-              <div>
-                <label htmlFor="brand" className="block text-sm font-medium text-gray-700">Brand</label>
-                <select
-                  id="brand"
-                  name="brand"
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filterBrand}
-                  onChange={handleBrandChange}
-                >
-                  <option value="">All Brands</option>
-                  {brands.map(brand => (
-                    <option key={brand} value={brand}>{brand}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Protection Level Filter */}
-              <div>
-                <label htmlFor="protectionLevel" className="block text-sm font-medium text-gray-700">Protection Level</label>
-                <select
-                  id="protectionLevel"
-                  name="protectionLevel"
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filterProtectionLevel}
-                  onChange={handleProtectionLevelChange}
-                >
-                  <option value="">All Levels</option>
-                  {protectionLevels.map(level => (
-                    <option key={level} value={level}>{level.charAt(0).toUpperCase() + level.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {/* Price Range Filters */}
-              <div>
-                <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700">Min Price</label>
-                <input
-                  type="number"
-                  id="minPrice"
-                  name="minPrice"
-                  className="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  placeholder="Min"
-                  value={minPrice}
-                  onChange={handleMinPriceChange}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700">Max Price</label>
-                <input
-                  type="number"
-                  id="maxPrice"
-                  name="maxPrice"
-                  className="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  placeholder="Max"
-                  value={maxPrice}
-                  onChange={handleMaxPriceChange}
-                />
-              </div>
+            <div>
+              <label htmlFor="brand" className="block text-sm font-medium text-gray-700">
+                Brand
+              </label>
+              <select
+                id="brand"
+                name="brand"
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                value={selectedBrand}
+                onChange={handleBrandChange}
+              >
+                <option value="">All Brands</option>
+                {brands.map((brand) => (
+                  <option key={brand.value} value={brand.value}>
+                    {brand.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700">
+                Search
+              </label>
+              <form onSubmit={handleSearchSubmit}>
+                <div className="mt-1 flex rounded-md shadow-sm">
+                  <input
+                    type="text"
+                    name="search"
+                    id="search"
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    placeholder="Search by name"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                  />
+                  <button
+                    type="submit"
+                    className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Search
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
-      </div>
-      
-      {/* Case Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        {loading ? (
-          <LoadingSpinner />
-        ) : error ? (
-          <ErrorMessage message={error} />
-        ) : cases.length === 0 ? (
+        
+        {/* Loading state */}
+        {loading && <LoadingSpinner />}
+        
+        {/* Error state */}
+        {!loading && error && <ErrorMessage message={error} />}
+        
+        {/* Empty state */}
+        {!loading && !error && cases.length === 0 && (
           <EmptyState 
-            message="No cases found. Try adjusting your filters or add some cases."
-            actionLabel="Add Case"
-            onAction={handleAddCase}
+            message="No cases found" 
+            actionLabel="Add Case" 
+            onAction={handleAddCase} 
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('name')}
-                  >
-                    <div className="flex items-center">
-                      <span>Name</span>
-                      {sortField === 'name' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('brand')}
-                  >
-                    <div className="flex items-center">
-                      <span>Brand</span>
-                      {sortField === 'brand' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('type')}
-                  >
-                    <div className="flex items-center">
-                      <span>Type</span>
-                      {sortField === 'type' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Interior Dimensions
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('protectionLevel')}
-                  >
-                    <div className="flex items-center">
-                      <span>Protection</span>
-                      {sortField === 'protectionLevel' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSortChange('price')}
-                  >
-                    <div className="flex items-center">
-                      <span>Price</span>
-                      {sortField === 'price' && (
-                        <svg className={`ml-1 h-4 w-4 ${sortDirection === 'asc' ? '' : 'transform rotate-180'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {cases.map((caseItem) => (
-                  <tr key={caseItem._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          {caseItem.imageUrl ? (
-                            <img className="h-10 w-10 rounded-full object-cover" src={caseItem.imageUrl} alt={caseItem.name} />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <svg className="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{caseItem.name}</div>
-                          <div className="text-sm text-gray-500">{caseItem.material}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{caseItem.brand}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {caseItem.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {caseItem.dimensions?.interior ? 
-                        `${caseItem.dimensions.interior.length} x ${caseItem.dimensions.interior.width} x ${caseItem.dimensions.interior.height} ${caseItem.dimensions.interior.unit}` :
-                        `${caseItem.internalDimensions.length} x ${caseItem.internalDimensions.width} x ${caseItem.internalDimensions.height} ${caseItem.internalDimensions.unit}`
-                      }
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        caseItem.protectionLevel === 'high' ? 'bg-green-100 text-green-800' :
-                        caseItem.protectionLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {caseItem.protectionLevel ? caseItem.protectionLevel.charAt(0).toUpperCase() + caseItem.protectionLevel.slice(1) : 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {caseItem.price ? `$${caseItem.price.toFixed(2)} ${caseItem.currency || 'USD'}` : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditCase(caseItem)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCase(caseItem)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        )}
+        
+        {/* Data table */}
+        {!loading && !error && cases.length > 0 && (
+          <div className="mt-8 flex flex-col">
+            <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+              <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-300">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('name')}
+                          >
+                            Name
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'name' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('brand')}
+                          >
+                            Brand
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'brand' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('type')}
+                          >
+                            Type
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'type' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          Dimensions (mm)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                        >
+                          <button
+                            className="group inline-flex"
+                            onClick={() => handleSort('weight')}
+                          >
+                            Weight (g)
+                            <span className="ml-2 flex-none rounded text-gray-400">
+                              {sortField === 'weight' ? (
+                                sortDirection === 'asc' ? (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                )
+                              ) : (
+                                <svg className="h-5 w-5 opacity-0 group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        </th>
+                        <th
+                          scope="col"
+                          className="relative py-3.5 pl-3 pr-4 sm:pr-6"
+                        >
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {cases.map((caseItem) => (
+                        <tr key={caseItem._id}>
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                            {caseItem.name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{caseItem.brand}</td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{caseItem.type}</td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {caseItem.dimensions.width} × {caseItem.dimensions.height} × {caseItem.dimensions.depth}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{caseItem.weight}</td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <button
+                              onClick={() => handleEditCase(caseItem)}
+                              className="text-indigo-600 hover:text-indigo-900 mr-4"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCase(caseItem)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         
@@ -787,8 +740,45 @@ const CaseManagementPage = () => {
         )}
       </div>
       
-      {/* Add/Edit/Delete/Import Modals will be implemented here */}
-      {/* These will be implemented in the next phase */}
+      {/* Add/Edit/Delete/Import Modals */}
+      <CaseModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleSaveCase}
+        types={types}
+        brands={brands}
+        isProcessing={isProcessing}
+        mode="add"
+      />
+      
+      <CaseModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveCase}
+        caseItem={selectedCase}
+        types={types}
+        brands={brands}
+        isProcessing={isProcessing}
+        mode="edit"
+      />
+      
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        itemName={selectedCase?.name || ''}
+        itemType="Case"
+        isDeleting={isProcessing}
+      />
+      
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImport}
+        itemType="Case"
+        isProcessing={isProcessing}
+        acceptedFileTypes=".json,.csv"
+      />
     </AdminLayout>
   );
 };

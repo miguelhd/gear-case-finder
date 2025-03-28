@@ -74,29 +74,42 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
         
         if (!gear || !caseItem) return false;
         
+        // Ensure search is a string before calling toLowerCase()
+        const searchStr = typeof search === 'string' ? search.toLowerCase() : Array.isArray(search) ? search[0].toLowerCase() : '';
+        
         return (
-          gear.name.toLowerCase().includes(search.toLowerCase()) ||
-          gear.brand.toLowerCase().includes(search.toLowerCase()) ||
-          gear.type.toLowerCase().includes(search.toLowerCase()) ||
-          caseItem.name.toLowerCase().includes(search.toLowerCase()) ||
-          caseItem.brand.toLowerCase().includes(search.toLowerCase()) ||
-          caseItem.type.toLowerCase().includes(search.toLowerCase())
+          gear.name.toLowerCase().includes(searchStr) ||
+          gear.brand.toLowerCase().includes(searchStr) ||
+          gear.type.toLowerCase().includes(searchStr) ||
+          caseItem.name.toLowerCase().includes(searchStr) ||
+          caseItem.brand.toLowerCase().includes(searchStr) ||
+          caseItem.type.toLowerCase().includes(searchStr)
         );
       })
       .map(match => match._id);
       
-    // Add these IDs to the query
+    // Add to query
     query._id = { $in: filteredIds };
+  }
+  
+  // Add match type filter if provided
+  if (req.query.matchType) {
+    query.matchType = req.query.matchType;
   }
   
   // Add gear type filter if provided
   if (gearType) {
-    // Similar approach for gear type
+    // We need to filter by a field in the populated gear document
+    // First, get all matches with populated gear
     const matchesWithGearType = await GearCaseMatch.find()
       .populate('gear');
       
     const filteredIds = matchesWithGearType
-      .filter(match => match.gear.type === gearType)
+      .filter(match => {
+        // Safely access the gear property
+        const gear = match.get('gear');
+        return gear && gear.type === gearType;
+      })
       .map(match => match._id);
       
     // Combine with existing query
@@ -114,7 +127,11 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
       .populate('case');
       
     const filteredIds = matchesWithCaseType
-      .filter(match => match.case.type === caseType)
+      .filter(match => {
+        // Safely access the case property
+        const caseItem = match.get('case');
+        return caseItem && caseItem.type === caseType;
+      })
       .map(match => match._id);
       
     // Combine with existing query
