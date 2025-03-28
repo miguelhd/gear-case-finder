@@ -1,18 +1,31 @@
 import React from 'react';
 import Image from 'next/image';
 
-interface ImageGalleryProps {
+/**
+ * Props for the ImageGallery component
+ */
+export interface ImageGalleryProps {
+  /**
+   * Array of image URLs to display in the gallery
+   */
   imageUrls: string[];
+  
+  /**
+   * Name of the item being displayed, used for alt text
+   */
   name: string;
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({ imageUrls, name }) => {
+  // Default image to use if imageUrls is empty or undefined
+  const defaultImage = '/images/placeholder.jpg';
+  
   return (
     <div className="md:w-1/2 p-6">
       <div className="relative h-80 w-full md:h-96 mb-4">
         {imageUrls && imageUrls.length > 0 ? (
           <Image
-            src={imageUrls[0]}
+            src={imageUrls[0] || defaultImage}
             alt={name}
             layout="fill"
             objectFit="contain"
@@ -33,7 +46,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ imageUrls, name }) => {
           {imageUrls.slice(0, 4).map((imageUrl: string, index: number) => (
             <div key={index} className="relative h-20 w-full">
               <Image
-                src={imageUrl}
+                src={imageUrl || defaultImage}
                 alt={`${name} - Image ${index + 1}`}
                 layout="fill"
                 objectFit="cover"

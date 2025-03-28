@@ -1,12 +1,23 @@
 import React, { ReactNode } from 'react';
 import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
+import AdminHeader, { HeaderProps } from './AdminHeader';
 
-type AdminLayoutProps = {
+interface AdminLayoutProps {
+  /**
+   * Content to be rendered inside the layout
+   */
   children: ReactNode;
+  
+  /**
+   * Title to display in the header
+   */
   title: string;
-  subtitle?: string;
-};
+  
+  /**
+   * Optional subtitle to display below the title
+   */
+  subtitle?: string | undefined;
+}
 
 const AdminLayout = ({ children, title, subtitle }: AdminLayoutProps) => {
   return (

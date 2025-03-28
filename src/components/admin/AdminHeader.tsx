@@ -1,9 +1,16 @@
 import React from 'react';
 
-type HeaderProps = {
+export interface HeaderProps {
+  /**
+   * Title to display in the header
+   */
   title: string;
-  subtitle?: string;
-};
+  
+  /**
+   * Optional subtitle to display below the title
+   */
+  subtitle?: string | undefined;
+}
 
 const AdminHeader = ({ title, subtitle }: HeaderProps) => {
   return (

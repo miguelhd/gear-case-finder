@@ -19,6 +19,49 @@ interface IGearCaseMatchDocument {
   updatedAt?: Date;
 }
 
+// Define interfaces for resolver parameters
+interface PaginationInput {
+  page?: number;
+  limit?: number;
+}
+
+interface GearFilterInput {
+  search?: string;
+  categories?: string[];
+  brands?: string[];
+  types?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  inStock?: boolean;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+interface CaseFilterInput {
+  search?: string;
+  brands?: string[];
+  types?: string[];
+  protectionLevels?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  inStock?: boolean;
+  waterproof?: boolean;
+  shockproof?: boolean;
+  dustproof?: boolean;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+interface MatchFilterInput {
+  gearId?: string;
+  caseId?: string;
+  minScore?: number;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
 // Helper function to map MongoDB _id to GraphQL id
 const mapIdField = (doc: any) => {
   if (!doc) return null;
@@ -44,7 +87,7 @@ export const resolvers = {
     },
     
     // Get all gear with pagination
-    allGear: async (_, { pagination = { page: 1, limit: 10 } }) => {
+    allGear: async (_: unknown, { pagination = { page: 1, limit: 10 } }: { pagination?: PaginationInput }) => {
       try {
         console.log('Executing allGear query with pagination:', pagination);
         
@@ -94,7 +137,7 @@ export const resolvers = {
     },
     
     // Get gear by ID
-    gear: async (_, { id }) => {
+    gear: async (_: unknown, { id }: { id: string }) => {
       try {
         console.log(`Executing gear query for ID: ${id}`);
         
@@ -112,7 +155,7 @@ export const resolvers = {
     },
     
     // Filter gear with pagination
-    filterGear: async (_, { filter, pagination = { page: 1, limit: 10 } }) => {
+    filterGear: async (_: unknown, { filter, pagination = { page: 1, limit: 10 } }: { filter: GearFilterInput, pagination?: PaginationInput }) => {
       try {
         console.log('Executing filterGear query with filter:', filter, 'and pagination:', pagination);
         
@@ -138,7 +181,7 @@ export const resolvers = {
         const skip = (page - 1) * limit;
         
         // Build query based on filter
-        const query: any = {};
+        const query: Record<string, any> = {};
         
         if (filter.search) {
           query.$or = [
@@ -221,7 +264,7 @@ export const resolvers = {
     },
     
     // Get all cases with pagination
-    allCases: async (_, { pagination = { page: 1, limit: 10 } }) => {
+    allCases: async (_: unknown, { pagination = { page: 1, limit: 10 } }: { pagination?: PaginationInput }) => {
       try {
         console.log('Executing allCases query with pagination:', pagination);
         
@@ -271,7 +314,7 @@ export const resolvers = {
     },
     
     // Get case by ID
-    case: async (_, { id }) => {
+    case: async (_: unknown, { id }: { id: string }) => {
       try {
         console.log(`Executing case query for ID: ${id}`);
         
@@ -289,7 +332,7 @@ export const resolvers = {
     },
     
     // Filter cases with pagination
-    filterCases: async (_, { filter, pagination = { page: 1, limit: 10 } }) => {
+    filterCases: async (_: unknown, { filter, pagination = { page: 1, limit: 10 } }: { filter: CaseFilterInput, pagination?: PaginationInput }) => {
       try {
         console.log('Executing filterCases query with filter:', filter, 'and pagination:', pagination);
         
@@ -315,7 +358,7 @@ export const resolvers = {
         const skip = (page - 1) * limit;
         
         // Build query based on filter
-        const query: any = {};
+        const query: Record<string, any> = {};
         
         if (filter.search) {
           query.$or = [
@@ -410,7 +453,7 @@ export const resolvers = {
     },
     
     // Get matches between gear and cases
-    matches: async (_, { filter, pagination = { page: 1, limit: 10 } }) => {
+    matches: async (_: unknown, { filter, pagination = { page: 1, limit: 10 } }: { filter: MatchFilterInput, pagination?: PaginationInput }) => {
       try {
         console.log('Executing matches query with filter:', filter, 'and pagination:', pagination);
         
@@ -424,11 +467,19 @@ export const resolvers = {
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
+        const count = await GearCaseMatch.countDocuments();
+        console.log(`${GearCaseMatch.collection.name} collection has ${count} documents`);
+        
+        if (count === 0) {
+          console.warn(`${GearCaseMatch.collection.name} collection is empty`);
+          return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
+        }
+        
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
         // Build query based on filter
-        const query: any = {};
+        const query: Record<string, any> = {};
         
         if (filter.gearId) {
           query.gearId = filter.gearId;
@@ -444,21 +495,22 @@ export const resolvers = {
         
         // Determine sort order
         let sortField = 'compatibilityScore';
-        let sortOrder: 1 | -1 = -1; // Default to highest score first
+        let sortOrder: 1 | -1 = -1; // Default to descending for scores
         
         if (filter.sortBy) {
           sortField = filter.sortBy;
-          sortOrder = filter.sortDirection === 'desc' ? -1 : 1;
+          sortOrder = filter.sortDirection === 'asc' ? 1 : -1;
         }
         
         const sortOptions: Record<string, 1 | -1> = {};
         sortOptions[sortField] = sortOrder;
         
+        console.log('Executing query with filter:', query);
+        
         // Use find instead of aggregate for simpler debugging
         const queryCount = await GearCaseMatch.countDocuments(query);
         console.log(`Query matched ${queryCount} match documents`);
         
-        // Explicitly type the result as IGearCaseMatchDocument[]
         const items = await GearCaseMatch.find(query)
           .sort(sortOptions)
           .skip(skip)
@@ -468,24 +520,8 @@ export const resolvers = {
         
         console.log(`Retrieved ${items.length} match items`);
         
-        // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match) => {
-          try {
-            const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
-            const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
-            return {
-              ...match,
-              gear,
-              case: caseItem
-            };
-          } catch (err) {
-            console.error(`Error populating match data for match ID ${match._id}:`, err);
-            return match;
-          }
-        }));
-        
         return {
-          items: populatedItems,
+          items,
           pagination: {
             total: queryCount,
             page,
@@ -500,32 +536,27 @@ export const resolvers = {
     },
     
     // Get matches for specific gear
-    matchesForGear: async (_, { gearId, pagination = { page: 1, limit: 10 } }) => {
+    matchesForGear: async (_: unknown, { gearId, pagination = { page: 1, limit: 10 } }: { gearId: string, pagination?: PaginationInput }) => {
       try {
         console.log(`Executing matchesForGear query for gear ID: ${gearId} with pagination:`, pagination);
         
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
         
-        // Check if collection exists using the safe method
-        const exists = await collectionExists(GearCaseMatch.collection.name);
-        if (!exists) {
-          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
+        // Query for matches with the specified gear ID
+        const queryCount = await GearCaseMatch.countDocuments({ gearId });
+        console.log(`Query matched ${queryCount} match documents for gear ID ${gearId}`);
+        
+        if (queryCount === 0) {
+          console.warn(`No matches found for gear ID ${gearId}`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Query for matches with the specified gear ID
-        const query = { gearId };
-        
-        // Use countDocuments for accurate count
-        const queryCount = await GearCaseMatch.countDocuments(query);
-        console.log(`Query matched ${queryCount} match documents for gear ID ${gearId}`);
-        
-        // Sort by compatibility score (highest first)
-        const items = await GearCaseMatch.find(query)
+        // Use find instead of aggregate for simpler debugging
+        const items = await GearCaseMatch.find({ gearId })
           .sort({ compatibilityScore: -1 })
           .skip(skip)
           .limit(limit)
@@ -534,24 +565,8 @@ export const resolvers = {
         
         console.log(`Retrieved ${items.length} match items for gear ID ${gearId}`);
         
-        // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match) => {
-          try {
-            const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
-            const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
-            return {
-              ...match,
-              gear,
-              case: caseItem
-            };
-          } catch (err) {
-            console.error(`Error populating match data for match ID ${match._id}:`, err);
-            return match;
-          }
-        }));
-        
         return {
-          items: populatedItems,
+          items,
           pagination: {
             total: queryCount,
             page,
@@ -566,32 +581,27 @@ export const resolvers = {
     },
     
     // Get matches for specific case
-    matchesForCase: async (_, { caseId, pagination = { page: 1, limit: 10 } }) => {
+    matchesForCase: async (_: unknown, { caseId, pagination = { page: 1, limit: 10 } }: { caseId: string, pagination?: PaginationInput }) => {
       try {
         console.log(`Executing matchesForCase query for case ID: ${caseId} with pagination:`, pagination);
         
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
         
-        // Check if collection exists using the safe method
-        const exists = await collectionExists(GearCaseMatch.collection.name);
-        if (!exists) {
-          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
+        // Query for matches with the specified case ID
+        const queryCount = await GearCaseMatch.countDocuments({ caseId });
+        console.log(`Query matched ${queryCount} match documents for case ID ${caseId}`);
+        
+        if (queryCount === 0) {
+          console.warn(`No matches found for case ID ${caseId}`);
           return { items: [], pagination: { total: 0, page: pagination.page, limit: pagination.limit, pages: 0 } };
         }
         
         const { page = 1, limit = 10 } = pagination;
         const skip = (page - 1) * limit;
         
-        // Query for matches with the specified case ID
-        const query = { caseId };
-        
-        // Use countDocuments for accurate count
-        const queryCount = await GearCaseMatch.countDocuments(query);
-        console.log(`Query matched ${queryCount} match documents for case ID ${caseId}`);
-        
-        // Sort by compatibility score (highest first)
-        const items = await GearCaseMatch.find(query)
+        // Use find instead of aggregate for simpler debugging
+        const items = await GearCaseMatch.find({ caseId })
           .sort({ compatibilityScore: -1 })
           .skip(skip)
           .limit(limit)
@@ -600,24 +610,8 @@ export const resolvers = {
         
         console.log(`Retrieved ${items.length} match items for case ID ${caseId}`);
         
-        // Populate gear and case data
-        const populatedItems = await Promise.all(items.map(async (match) => {
-          try {
-            const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
-            const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
-            return {
-              ...match,
-              gear,
-              case: caseItem
-            };
-          } catch (err) {
-            console.error(`Error populating match data for match ID ${match._id}:`, err);
-            return match;
-          }
-        }));
-        
         return {
-          items: populatedItems,
+          items,
           pagination: {
             total: queryCount,
             page,
@@ -632,44 +626,17 @@ export const resolvers = {
     },
     
     // Get a specific match
-    match: async (_, { id }) => {
+    match: async (_: unknown, { id }: { id: string }) => {
       try {
         console.log(`Executing match query for ID: ${id}`);
         
         // Ensure MongoDB is connected with enhanced connection handling
         await connectToMongoDB();
         
-        // Check if collection exists using the safe method
-        const exists = await collectionExists(GearCaseMatch.collection.name);
-        if (!exists) {
-          console.error(`${GearCaseMatch.collection.name} collection does not exist in the database`);
-          return null;
-        }
-        
-        // Find the match by ID
-        const match = await GearCaseMatch.findById(id).lean().then(mapIdField);
-        
-        if (!match) {
-          console.warn(`Match with ID ${id} not found`);
-          return null;
-        }
-        
-        console.log(`Retrieved match with ID ${id}`);
-        
-        // Populate gear and case data
-        try {
-          const gear = await AudioGear.findById(match.gearId).lean().then(mapIdField);
-          const caseItem = await Case.findById(match.caseId).lean().then(mapIdField);
-          
-          return {
-            ...match,
-            gear,
-            case: caseItem
-          };
-        } catch (err) {
-          console.error(`Error populating match data for match ID ${id}:`, err);
-          return match;
-        }
+        const item = await GearCaseMatch.findById(id).lean()
+          .then(mapIdField);
+        console.log('Retrieved match item:', item ? 'Found' : 'Not found');
+        return item;
       } catch (error) {
         console.error(`Error in match resolver for ID ${id}:`, error);
         throw new Error(`Failed to fetch match with ID ${id}: ${error instanceof Error ? error.message : String(error)}`);
