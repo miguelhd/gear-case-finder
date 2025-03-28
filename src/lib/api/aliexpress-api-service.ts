@@ -42,11 +42,12 @@ export class AliExpressApiService {
     try {
       // Check cache first if enabled
       if (this.cacheEnabled) {
-        const cacheKey = `aliexpress:product:${productId}:${currency}:${language}`;
-        const cachedData = await this.cacheService.get(cacheKey);
+        const apiName = 'aliexpress:product';
+        const params = { productId, currency, language };
+        const cachedData = await this.cacheService.get(apiName, params);
         
         if (cachedData) {
-          return cachedData;
+          return cachedData as any;
         }
       }
       
@@ -56,8 +57,9 @@ export class AliExpressApiService {
       
       // Store in cache if enabled
       if (this.cacheEnabled && mappedProduct) {
-        const cacheKey = `aliexpress:product:${productId}:${currency}:${language}`;
-        await this.cacheService.set(cacheKey, mappedProduct, this.cacheTtl);
+        const apiName = 'aliexpress:product';
+        const params = { productId, currency, language };
+        await this.cacheService.set(apiName, params, mappedProduct, { ttl: this.cacheTtl });
       }
       
       return mappedProduct;
@@ -74,11 +76,12 @@ export class AliExpressApiService {
     try {
       // Check cache first if enabled
       if (this.cacheEnabled) {
-        const cacheKey = `aliexpress:search:${keywords}:${JSON.stringify(options)}`;
-        const cachedData = await this.cacheService.get(cacheKey);
+        const apiName = 'aliexpress:search';
+        const params = { keywords, ...options };
+        const cachedData = await this.cacheService.get(apiName, params);
         
         if (cachedData) {
-          return cachedData;
+          return cachedData as any[];
         }
       }
       
@@ -107,8 +110,9 @@ export class AliExpressApiService {
       
       // Store in cache if enabled
       if (this.cacheEnabled) {
-        const cacheKey = `aliexpress:search:${keywords}:${JSON.stringify(options)}`;
-        await this.cacheService.set(cacheKey, mappedProducts, this.cacheTtl);
+        const apiName = 'aliexpress:search';
+        const params = { keywords, ...options };
+        await this.cacheService.set(apiName, params, mappedProducts, { ttl: this.cacheTtl });
       }
       
       return mappedProducts;
@@ -125,11 +129,12 @@ export class AliExpressApiService {
     try {
       // Check cache first if enabled
       if (this.cacheEnabled) {
-        const cacheKey = `aliexpress:shipping:${productId}:${country}`;
-        const cachedData = await this.cacheService.get(cacheKey);
+        const apiName = 'aliexpress:shipping';
+        const params = { productId, country };
+        const cachedData = await this.cacheService.get(apiName, params);
         
         if (cachedData) {
-          return cachedData;
+          return cachedData as any;
         }
       }
       
@@ -139,8 +144,9 @@ export class AliExpressApiService {
       
       // Store in cache if enabled
       if (this.cacheEnabled && mappedShippingInfo) {
-        const cacheKey = `aliexpress:shipping:${productId}:${country}`;
-        await this.cacheService.set(cacheKey, mappedShippingInfo, this.cacheTtl);
+        const apiName = 'aliexpress:shipping';
+        const params = { productId, country };
+        await this.cacheService.set(apiName, params, mappedShippingInfo, { ttl: this.cacheTtl });
       }
       
       return mappedShippingInfo;

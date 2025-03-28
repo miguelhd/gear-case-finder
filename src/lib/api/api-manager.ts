@@ -50,34 +50,9 @@ export interface IApiManagerOptions {
   delayBetweenRetries?: number;
   
   /**
-   * Whether to save API results to the database.
+   * Whether to enable caching of API responses.
    */
-  saveToDatabase?: boolean;
-  
-  /**
-   * Whether to download images from API results.
-   */
-  downloadImages?: boolean;
-  
-  /**
-   * MongoDB connection URI.
-   */
-  mongodbUri?: string;
-  
-  /**
-   * API key for the Canopy API.
-   */
-  canopyApiKey?: string;
-  
-  /**
-   * Access token for the Reverb API.
-   */
-  reverbAccessToken?: string;
-  
-  /**
-   * API key for the AliExpress API (RapidAPI).
-   */
-  aliexpressRapidApiKey?: string;
+  enableCaching?: boolean;
   
   /**
    * Whether to enable batch processing of API requests.
@@ -85,116 +60,64 @@ export interface IApiManagerOptions {
   enableBatchProcessing?: boolean;
   
   /**
-   * Whether to enable caching of API responses.
+   * API key for Canopy API.
    */
-  enableCaching?: boolean;
-}
-
-/**
- * Interface for batch job history item
- */
-export interface IBatchJobHistoryItem {
-  jobId: string;
-  jobType: string;
-  startTime: Date;
-  endTime?: Date;
-  status: string;
-  results?: {
-    success: boolean;
-    itemsProcessed: number;
-    errors: string[];
-  };
-}
-
-/**
- * Interface for cache statistics
- */
-export interface ICacheStats {
-  enabled: boolean;
-  size?: number | undefined;
-  maxSize?: number | undefined;
-  itemCount?: number | undefined;
-  maxItems?: number | undefined;
-  hitRate?: number | undefined;
-  misses?: number | undefined;
-  hits?: number | undefined;
-  totalCount?: number;
-  expiredCount?: number;
-  activeCount?: number;
-  namespaceStats?: Array<{ namespace: string; count: number }>;
+  canopyApiKey?: string;
+  
+  /**
+   * Access token for Reverb API.
+   */
+  reverbAccessToken?: string;
+  
+  /**
+   * API key for AliExpress API.
+   */
+  aliexpressApiKey?: string;
 }
 
 export class ApiManager {
-  private logger!: winston.Logger;
   private options: IApiManagerOptions;
+  private logger!: winston.Logger;
   private cacheService: ApiCacheService;
   private canopyClient: CanopyApiClient;
   private reverbClient: ReverbApiClient;
   private aliexpressService: AliExpressApiService;
   private batchProcessingSystem?: BatchProcessingSystem;
-  private imageDownloader?: ImageDownloader;
+  private imageDownloader: ImageDownloader;
   private apiSources: Map<string, string> = new Map();
   
   constructor(options: IApiManagerOptions = {}) {
-    // Determine appropriate log directory based on environment
-    const defaultLogDir = process.env.NODE_ENV === 'production' 
-      ? '/tmp/logs' 
-      : './logs';
-    
-    // Determine appropriate data directory based on environment
-    const defaultDataDir = process.env.NODE_ENV === 'production' 
-      ? '/tmp/data' 
-      : './data';
-    
-    // Determine appropriate image directory based on environment
-    const defaultImageDir = process.env.NODE_ENV === 'production' 
-      ? '/tmp/images' 
-      : './public/images';
-    
     this.options = {
-      logDirectory: defaultLogDir,
-      dataDirectory: defaultDataDir,
-      imageDirectory: defaultImageDir,
+      logDirectory: '/tmp/logs',
+      dataDirectory: '/tmp/data',
+      imageDirectory: '/tmp/images',
       maxRetries: 3,
-      delayBetweenRetries: 5000,
-      saveToDatabase: true,
-      downloadImages: true,
-      mongodbUri: process.env['MONGODB_URI'] || 'mongodb+srv://gearCaseApp:rucwoj-watxor-Rocji5@cluster0.mongodb.net/musician-case-finder',
-      canopyApiKey: process.env['CANOPY_API_KEY'] || '',
-      reverbAccessToken: process.env['REVERB_ACCESS_TOKEN'] || '',
-      aliexpressRapidApiKey: process.env['ALIEXPRESS_RAPIDAPI_KEY'] || '',
-      enableBatchProcessing: true,
+      delayBetweenRetries: 1000,
       enableCaching: true,
+      enableBatchProcessing: false,
       ...options
     };
     
-    // Initialize API clients - ensure we always pass a string, not undefined
-    this.canopyClient = new CanopyApiClient({ apiKey: this.options.canopyApiKey || '' });
-    this.reverbClient = new ReverbApiClient({ accessToken: this.options.reverbAccessToken || '' });
-    this.aliexpressService = new AliExpressApiService({ 
-      rapidApiKey: this.options.aliexpressRapidApiKey || '',
-      cacheEnabled: this.options.enableCaching
+    // Initialize API clients
+    this.canopyClient = new CanopyApiClient({
+      apiKey: this.options.canopyApiKey || ''
+    });
+    
+    this.reverbClient = new ReverbApiClient({
+      accessToken: this.options.reverbAccessToken || ''
+    });
+    
+    this.aliexpressService = new AliExpressApiService({
+      rapidApiKey: this.options.aliexpressApiKey || ''
     });
     
     // Initialize cache service
     this.cacheService = new ApiCacheService();
     
-    // Initialize image downloader if enabled
-    if (this.options.downloadImages) {
-      // Create a configuration object with only defined values to avoid TypeScript errors
-      const imageDownloaderOptions: Record<string, string> = {};
-      
-      // Only add properties if they are defined
-      if (this.options.imageDirectory) {
-        imageDownloaderOptions['imageDirectory'] = this.options.imageDirectory;
-      }
-      
-      if (this.options.logDirectory) {
-        imageDownloaderOptions['logDirectory'] = this.options.logDirectory;
-      }
-      
-      this.imageDownloader = new ImageDownloader(imageDownloaderOptions);
-    }
+    // Initialize image downloader
+    this.imageDownloader = new ImageDownloader({
+      outputDirectory: this.options.imageDirectory || '/tmp/images'
+    });
     
     // Register API sources
     this.apiSources.set('canopy', 'Canopy API');
@@ -317,7 +240,7 @@ export class ApiManager {
       
       // Cache results if enabled
       if (this.options.enableCaching) {
-        await this.cacheService.set(apiName, params, combinedResults);
+        await this.cacheService.set(apiName, params, combinedResults, { ttl: 3600 });
       }
       
       return combinedResults;
@@ -379,7 +302,7 @@ export class ApiManager {
       
       // Cache results if enabled
       if (this.options.enableCaching) {
-        await this.cacheService.set(apiName, params, combinedResults);
+        await this.cacheService.set(apiName, params, combinedResults, { ttl: 3600 });
       }
       
       return combinedResults;
@@ -399,45 +322,48 @@ export class ApiManager {
   /**
    * Get cache statistics
    */
-  async getCacheStats(): Promise<ICacheStats> {
+  async getCacheStats(): Promise<any> {
+    if (!this.options.enableCaching) {
+      return { enabled: false };
+    }
+    
     try {
-      if (!this.options.enableCaching) {
-        return { enabled: false };
-      }
-      
       return await this.cacheService.getStats();
     } catch (error: unknown) {
-      this.logger.error('Error getting cache stats:', error);
-      return { enabled: this.options.enableCaching || false };
+      this.logger.error('Error getting cache statistics:', error);
+      return { error: 'Failed to get cache statistics' };
     }
   }
   
   /**
-   * Clear the cache
+   * Run a batch job manually
    */
-  async clearCache(): Promise<boolean> {
+  async runBatchJob(jobType: string): Promise<void> {
+    if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
+      this.logger.warn('Batch processing is not enabled');
+      return;
+    }
+    
     try {
-      if (!this.options.enableCaching) {
-        return false;
-      }
-      
-      return await this.cacheService.clear();
+      await this.batchProcessingSystem.runManualBatchJob(jobType);
+      this.logger.info(`Successfully ran batch job: ${jobType}`);
     } catch (error: unknown) {
-      this.logger.error('Error clearing cache:', error);
-      return false;
+      this.logger.error(`Error running batch job ${jobType}:`, error);
+      throw error;
     }
   }
   
   /**
    * Get batch job history
    */
-  async getBatchJobHistory(): Promise<IBatchJobHistoryItem[]> {
+  async getBatchJobHistory(limit: number = 10): Promise<any[]> {
+    if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
+      this.logger.warn('Batch processing is not enabled');
+      return [];
+    }
+    
     try {
-      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
-        return [];
-      }
-      
-      return await this.batchProcessingSystem.getJobHistory();
+      return await this.batchProcessingSystem.getBatchJobHistory(limit);
     } catch (error: unknown) {
       this.logger.error('Error getting batch job history:', error);
       return [];
@@ -445,116 +371,393 @@ export class ApiManager {
   }
   
   /**
-   * Start a batch job to fetch audio gear data
+   * Schedule a job to run at regular intervals
    */
-  async startAudioGearBatchJob(queries: string[]): Promise<string> {
-    try {
-      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
-        throw new Error('Batch processing is not enabled');
+  scheduleJob(
+    jobName: string,
+    operation: () => Promise<void>,
+    intervalMinutes: number
+  ): NodeJS.Timeout {
+    this.logger.info(`Scheduling job ${jobName} to run every ${intervalMinutes} minutes`);
+    
+    // Convert minutes to milliseconds
+    const interval = intervalMinutes * 60 * 1000;
+    
+    // Schedule the job to run at the specified interval
+    const timer = setInterval(async () => {
+      try {
+        this.logger.info(`Running scheduled job: ${jobName}`);
+        await operation();
+        this.logger.info(`Completed scheduled job: ${jobName}`);
+      } catch (error: unknown) {
+        this.logger.error(`Error in scheduled job ${jobName}:`, error);
       }
-      
-      return await this.batchProcessingSystem.startAudioGearBatchJob(queries);
-    } catch (error: unknown) {
-      this.logger.error('Error starting audio gear batch job:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Start a batch job to fetch case data
-   */
-  async startCasesBatchJob(queries: string[]): Promise<string> {
-    try {
-      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
-        throw new Error('Batch processing is not enabled');
-      }
-      
-      return await this.batchProcessingSystem.startCasesBatchJob(queries);
-    } catch (error: unknown) {
-      this.logger.error('Error starting cases batch job:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Get batch job status
-   */
-  async getBatchJobStatus(jobId: string): Promise<IBatchJobHistoryItem | null> {
-    try {
-      if (!this.options.enableBatchProcessing || !this.batchProcessingSystem) {
-        return null;
-      }
-      
-      return await this.batchProcessingSystem.getJobStatus(jobId);
-    } catch (error: unknown) {
-      this.logger.error('Error getting batch job status:', error);
-      return null;
-    }
+    }, interval);
+    
+    return timer;
   }
   
   /**
    * Find cases that match the dimensions of a specific audio gear
    */
-  async searchCasesForAudioGear(audioGear: IAudioGear, options: { page?: number, limit?: number } = {}): Promise<ICase[]> {
+  async findMatchingCases(audioGear: IAudioGear): Promise<ICase[]> {
     try {
       if (!audioGear || !audioGear.dimensions) {
         return [];
       }
       
       // Create a cache key for this search
-      const apiName = 'search_cases_for_audio_gear';
-      const params = { audioGearId: audioGear.id, ...options };
+      const apiName = 'find_matching_cases';
+      const params = { audioGearId: audioGear.id, dimensions: audioGear.dimensions };
       
       // Check cache first if enabled
       if (this.options.enableCaching) {
         const cachedResult = await this.cacheService.get(apiName, params);
         if (cachedResult) {
-          this.logger.info(`Cache hit for cases search for audio gear: ${audioGear.id}`);
+          this.logger.info(`Cache hit for matching cases for audio gear: ${audioGear.id}`);
           return cachedResult as ICase[];
         }
       }
       
-      // Prepare search options
-      const limit = options.limit || 20;
+      // Construct search query based on dimensions
+      let searchQuery = 'case';
+      
+      if (audioGear.brand) {
+        searchQuery += ` ${audioGear.brand}`;
+      }
+      
+      if (audioGear.model) {
+        searchQuery += ` ${audioGear.model}`;
+      }
       
       // Search for cases
-      const cases = await this.searchCases('case', { limit });
+      const allCases = await this.searchCases(searchQuery, { limit: 50 });
       
-      // Filter cases that match the dimensions of the audio gear
-      const matchingCases = cases.filter(caseItem => {
-        if (!caseItem.dimensions || !audioGear.dimensions) {
+      // Filter cases that match the dimensions
+      const matchingCases = allCases.filter(caseItem => {
+        if (!caseItem.dimensions || !caseItem.dimensions.interior || !audioGear.dimensions) {
           return false;
         }
         
-        // Check if case dimensions are larger than audio gear dimensions
-        const isLengthSuitable = !audioGear.dimensions.length || !caseItem.dimensions.length || caseItem.dimensions.length >= audioGear.dimensions.length;
-        const isWidthSuitable = !audioGear.dimensions.width || !caseItem.dimensions.width || caseItem.dimensions.width >= audioGear.dimensions.width;
-        const isHeightSuitable = !audioGear.dimensions.height || !caseItem.dimensions.height || caseItem.dimensions.height >= audioGear.dimensions.height;
-        
+        // Check if case interior dimensions are larger than audio gear dimensions (with some tolerance)
+        const isLengthSuitable = !audioGear.dimensions.length || !caseItem.dimensions.interior.length || 
+          caseItem.dimensions.interior.length >= audioGear.dimensions.length * 0.9;
+          
+        const isWidthSuitable = !audioGear.dimensions.width || !caseItem.dimensions.interior.width || 
+          caseItem.dimensions.interior.width >= audioGear.dimensions.width * 0.9;
+          
+        const isHeightSuitable = !audioGear.dimensions.height || !caseItem.dimensions.interior.height || 
+          caseItem.dimensions.interior.height >= audioGear.dimensions.height * 0.9;
+          
         return isLengthSuitable && isWidthSuitable && isHeightSuitable;
       });
       
-      // Try AliExpress API for more precise matching if available
-      if (this.options.aliexpressRapidApiKey) {
-        try {
-          const aliexpressMatchingCases = await this.aliexpressService.findMatchingCases(audioGear, { limit });
-          
-          // Add AliExpress cases to the matching cases
-          matchingCases.push(...aliexpressMatchingCases);
-        } catch (error) {
-          this.logger.error(`Error finding matching cases from AliExpress: ${error}`);
-        }
-      }
-      
       // Cache results if enabled
       if (this.options.enableCaching) {
-        await this.cacheService.set(apiName, params, matchingCases);
+        await this.cacheService.set(apiName, params, matchingCases, { ttl: 86400 });
       }
       
       return matchingCases;
     } catch (error: unknown) {
-      this.logger.error('Error searching for cases for audio gear:', error);
+      this.logger.error('Error finding matching cases:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get audio gear details by marketplace and product ID
+   */
+  async getAudioGearDetails(marketplace: string, productId: string): Promise<IAudioGear | null> {
+    try {
+      // Create a cache key for this request
+      const apiName = 'get_audio_gear_details';
+      const params = { marketplace, productId };
+      
+      // Check cache first if enabled
+      if (this.options.enableCaching) {
+        const cachedResult = await this.cacheService.get(apiName, params);
+        if (cachedResult) {
+          this.logger.info(`Cache hit for audio gear details: ${marketplace}/${productId}`);
+          return cachedResult as IAudioGear;
+        }
+      }
+      
+      // Get details from the appropriate API source
+      let audioGearData: any = null;
+      
+      switch (marketplace.toLowerCase()) {
+        case 'canopy':
+          try {
+            const productData = await this.canopyClient.getProduct(productId);
+            // Convert product data to audio gear format
+            audioGearData = {
+              id: productId,
+              marketplace: 'canopy',
+              name: productData.title || '',
+              brand: productData.brand || '',
+              type: productData.type || 'unknown',
+              category: productData.category || '',
+              description: productData.description || '',
+              price: productData.price || 0,
+              currency: productData.currency || 'USD',
+              imageUrl: productData.imageUrl || '',
+              url: productData.url || '',
+              dimensions: productData.dimensions || {
+                length: 0,
+                width: 0,
+                height: 0,
+                unit: 'in'
+              },
+              weight: {
+                value: 0,
+                unit: 'lbs'
+              }
+            };
+          } catch (error: any) {
+            this.logger.error(`Error getting audio gear details from Canopy API: ${error.message}`);
+            return null;
+          }
+          break;
+          
+        case 'reverb':
+          try {
+            const productData = await this.reverbClient.getItem(productId);
+            // Convert product data to audio gear format
+            audioGearData = {
+              id: productId,
+              marketplace: 'reverb',
+              name: productData.title || '',
+              brand: productData.brand || '',
+              type: productData.type || 'unknown',
+              category: productData.category || '',
+              description: productData.description || '',
+              price: productData.price || 0,
+              currency: productData.currency || 'USD',
+              imageUrl: productData.imageUrl || '',
+              url: productData.url || '',
+              dimensions: productData.dimensions || {
+                length: 0,
+                width: 0,
+                height: 0,
+                unit: 'in'
+              },
+              weight: {
+                value: 0,
+                unit: 'lbs'
+              }
+            };
+          } catch (error: any) {
+            this.logger.error(`Error getting audio gear details from Reverb API: ${error.message}`);
+            return null;
+          }
+          break;
+          
+        case 'aliexpress':
+          const productInfo = await this.aliexpressService.getProductInfo(productId)
+            .catch(error => {
+              this.logger.error(`Error getting product details from AliExpress API: ${error.message}`);
+              return null;
+            });
+            
+          // Convert product info to audio gear format if it exists
+          if (productInfo) {
+            audioGearData = {
+              id: productId,
+              marketplace: 'aliexpress',
+              name: productInfo.title || '',
+              brand: productInfo.brand || '',
+              type: productInfo.type || 'unknown',
+              category: productInfo.category || '',
+              description: productInfo.description || '',
+              price: productInfo.price || 0,
+              currency: productInfo.currency || 'USD',
+              imageUrl: productInfo.imageUrl || '',
+              url: productInfo.url || '',
+              dimensions: productInfo.dimensions || {
+                length: 0,
+                width: 0,
+                height: 0,
+                unit: 'in'
+              },
+              weight: {
+                value: 0,
+                unit: 'lbs'
+              }
+            };
+          }
+          break;
+          
+        default:
+          this.logger.warn(`Unknown marketplace: ${marketplace}`);
+          return null;
+      }
+      
+      // Cache results if enabled and audio gear was found
+      if (this.options.enableCaching && audioGearData) {
+        await this.cacheService.set(apiName, params, audioGearData, { ttl: 86400 });
+      }
+      
+      // Return as IAudioGear type but without Document methods
+      return audioGearData as unknown as IAudioGear;
+    } catch (error: unknown) {
+      this.logger.error('Error getting audio gear details:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get case details by marketplace and product ID
+   */
+  async getCaseDetails(marketplace: string, productId: string): Promise<ICase | null> {
+    try {
+      // Create a cache key for this request
+      const apiName = 'get_case_details';
+      const params = { marketplace, productId };
+      
+      // Check cache first if enabled
+      if (this.options.enableCaching) {
+        const cachedResult = await this.cacheService.get(apiName, params);
+        if (cachedResult) {
+          this.logger.info(`Cache hit for case details: ${marketplace}/${productId}`);
+          return cachedResult as ICase;
+        }
+      }
+      
+      // Get details from the appropriate API source
+      let caseData: any = null;
+      
+      switch (marketplace.toLowerCase()) {
+        case 'canopy':
+          try {
+            const productData = await this.canopyClient.getProduct(productId);
+            // Convert product data to case format
+            caseData = {
+              id: productId,
+              marketplace: 'canopy',
+              name: productData.title || '',
+              brand: productData.brand || '',
+              type: productData.type || 'hard case',
+              category: productData.category || '',
+              description: productData.description || '',
+              price: productData.price || 0,
+              currency: productData.currency || 'USD',
+              imageUrl: productData.imageUrl || '',
+              url: productData.url || '',
+              dimensions: {
+                interior: {
+                  length: productData.dimensions?.length || 0,
+                  width: productData.dimensions?.width || 0,
+                  height: productData.dimensions?.height || 0,
+                  unit: productData.dimensions?.unit || 'in'
+                }
+              },
+              internalDimensions: {
+                length: productData.dimensions?.length || 0,
+                width: productData.dimensions?.width || 0,
+                height: productData.dimensions?.height || 0,
+                unit: productData.dimensions?.unit || 'in'
+              },
+              compatibleWith: []
+            };
+          } catch (error: any) {
+            this.logger.error(`Error getting case details from Canopy API: ${error.message}`);
+            return null;
+          }
+          break;
+          
+        case 'reverb':
+          try {
+            const productData = await this.reverbClient.getItem(productId);
+            // Convert product data to case format
+            caseData = {
+              id: productId,
+              marketplace: 'reverb',
+              name: productData.title || '',
+              brand: productData.brand || '',
+              type: productData.type || 'hard case',
+              category: productData.category || '',
+              description: productData.description || '',
+              price: productData.price || 0,
+              currency: productData.currency || 'USD',
+              imageUrl: productData.imageUrl || '',
+              url: productData.url || '',
+              dimensions: {
+                interior: {
+                  length: productData.dimensions?.length || 0,
+                  width: productData.dimensions?.width || 0,
+                  height: productData.dimensions?.height || 0,
+                  unit: productData.dimensions?.unit || 'in'
+                }
+              },
+              internalDimensions: {
+                length: productData.dimensions?.length || 0,
+                width: productData.dimensions?.width || 0,
+                height: productData.dimensions?.height || 0,
+                unit: productData.dimensions?.unit || 'in'
+              },
+              compatibleWith: []
+            };
+          } catch (error: any) {
+            this.logger.error(`Error getting case details from Reverb API: ${error.message}`);
+            return null;
+          }
+          break;
+          
+        case 'aliexpress':
+          const productInfo = await this.aliexpressService.getProductInfo(productId)
+            .catch(error => {
+              this.logger.error(`Error getting product details from AliExpress API: ${error.message}`);
+              return null;
+            });
+            
+          // Convert product info to case format if it exists
+          if (productInfo) {
+            caseData = {
+              id: productId,
+              marketplace: 'aliexpress',
+              name: productInfo.title || '',
+              brand: productInfo.brand || '',
+              type: productInfo.type || 'hard case',
+              category: productInfo.category || '',
+              description: productInfo.description || '',
+              price: productInfo.price || 0,
+              currency: productInfo.currency || 'USD',
+              imageUrl: productInfo.imageUrl || '',
+              url: productInfo.url || '',
+              dimensions: {
+                interior: {
+                  length: productInfo.dimensions?.length || 0,
+                  width: productInfo.dimensions?.width || 0,
+                  height: productInfo.dimensions?.height || 0,
+                  unit: productInfo.dimensions?.unit || 'in'
+                }
+              },
+              internalDimensions: {
+                length: productInfo.dimensions?.length || 0,
+                width: productInfo.dimensions?.width || 0,
+                height: productInfo.dimensions?.height || 0,
+                unit: productInfo.dimensions?.unit || 'in'
+              },
+              compatibleWith: []
+            };
+          }
+          break;
+          
+        default:
+          this.logger.warn(`Unknown marketplace: ${marketplace}`);
+          return null;
+      }
+      
+      // Cache results if enabled and case was found
+      if (this.options.enableCaching && caseData) {
+        await this.cacheService.set(apiName, params, caseData, { ttl: 86400 });
+      }
+      
+      // Return as ICase type but without Document methods
+      return caseData as unknown as ICase;
+    } catch (error: unknown) {
+      this.logger.error('Error getting case details:', error);
+      return null;
     }
   }
 }
