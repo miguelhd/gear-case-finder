@@ -457,7 +457,7 @@ export class MatchingTestSuite {
       // Restore the original method
       this.recommendationEngine['findBudgetAlternatives'] = originalFindBudget;
       
-      if (recommendations.length > 0 && recommendations[0].recommendationType === 'budget') {
+      if (recommendations.length > 0 && recommendations[0]?.recommendationType === 'budget') {
         passed++;
         console.log('✓ Budget recommendation test passed');
       } else {
@@ -501,7 +501,7 @@ export class MatchingTestSuite {
       // Restore the original method
       this.recommendationEngine['findPremiumUpgrades'] = originalFindPremium;
       
-      if (recommendations.length > 0 && recommendations[0].recommendationType === 'premium') {
+      if (recommendations.length > 0 && recommendations[0]?.recommendationType === 'premium') {
         passed++;
         console.log('✓ Premium recommendation test passed');
       } else {

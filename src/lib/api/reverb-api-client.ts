@@ -9,7 +9,7 @@ import axios from 'axios';
 
 interface ReverbApiConfig {
   accessToken: string;
-  baseUrl?: string;
+  baseUrl?: string | undefined;
 }
 
 interface SearchItemsRequest {

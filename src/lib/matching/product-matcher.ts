@@ -111,7 +111,7 @@ export class ProductMatcher {
       if (sortField === 'compatibilityScore') {
         return sortDirection * (b.compatibilityScore - a.compatibilityScore);
       } else if (sortField === 'price') {
-        return sortDirection * (a.price - b.price);
+        return sortDirection * ((a.price || 0) - (b.price || 0));
       } else if (sortField === 'rating') {
         const ratingA = a.rating || 0;
         const ratingB = b.rating || 0;

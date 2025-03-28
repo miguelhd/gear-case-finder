@@ -8,7 +8,7 @@ const options = {
   max: 500, // Maximum number of items in cache
   ttl: 1000 * 60 * 5, // Time to live: 5 minutes
   maxSize: 5000000, // Maximum cache size in bytes (approximately)
-  sizeCalculation: (value, key) => {
+  sizeCalculation: (value: any, key: string) => {
     // Approximate size calculation based on JSON stringification
     return JSON.stringify(value).length + (key ? key.length : 0);
   },
@@ -35,7 +35,7 @@ export function getCache() {
  * @param key - Cache key
  * @returns The cached value or undefined if not found
  */
-export function getCacheItem(key) {
+export function getCacheItem(key: string): any {
   const value = cache.get(key);
   if (value === undefined) {
     misses++;
@@ -51,7 +51,7 @@ export function getCacheItem(key) {
  * @param value - Value to cache
  * @param ttl - Optional custom TTL in milliseconds
  */
-export function setCacheItem(key, value, ttl) {
+export function setCacheItem(key: string, value: any, ttl?: number) {
   cache.set(key, value, { ttl });
 }
 
@@ -60,7 +60,7 @@ export function setCacheItem(key, value, ttl) {
  * @param key - Cache key
  * @returns True if the item was removed, false if it wasn't in the cache
  */
-export function removeCacheItem(key) {
+export function removeCacheItem(key: string): boolean {
   return cache.delete(key);
 }
 
@@ -100,8 +100,8 @@ export function getCacheStats() {
  * @param ttl - Optional custom TTL in milliseconds
  * @returns Wrapped function that uses cache
  */
-export function withCache(fn, keyPrefix, ttl) {
-  return async (...args) => {
+export function withCache(fn: (...args: any[]) => Promise<any>, keyPrefix: string, ttl?: number) {
+  return async (...args: any[]) => {
     // Create cache key from function name, prefix and stringified arguments
     const key = `${keyPrefix}:${JSON.stringify(args)}`;
     

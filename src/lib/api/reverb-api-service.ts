@@ -24,7 +24,7 @@ export class ReverbApiService {
   constructor(config: ReverbApiServiceConfig) {
     this.client = new ReverbApiClient({
       accessToken: config.accessToken,
-      baseUrl: config.baseUrl
+      baseUrl: config.baseUrl || undefined
     });
   }
 

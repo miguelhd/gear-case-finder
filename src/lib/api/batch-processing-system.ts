@@ -367,9 +367,9 @@ export class BatchProcessingSystem {
       // Update prices for audio gear
       for (const item of audioGearItems) {
         try {
-          if (item.marketplace === 'canopy' && item.productUrl) {
+          if (item['marketplace'] === 'canopy' && item['productUrl']) {
             // Extract product ID from URL
-            const productId = item.productUrl.split('/').pop();
+            const productId = item['productUrl'].split('/').pop();
             
             if (productId) {
               // Get updated product data
@@ -378,18 +378,18 @@ export class BatchProcessingSystem {
               // Update price
               if (productData.price) {
                 await audioGearCollection.updateOne(
-                  { _id: item._id },
+                  { _id: item['_id'] },
                   { 
                     $set: {
-                      price: parseFloat(productData.price.amount || productData.price.value || productData.price) || item.price,
-                      currency: productData.price.currency || item.currency,
+                      price: parseFloat(productData.price.amount || productData.price.value || productData.price) || item['price'],
+                      currency: productData.price.currency || item['currency'],
                       updatedAt: new Date()
                     }
                   }
                 );
               }
             }
-          } else if (item.marketplace === 'reverb' && item.productUrl) {
+          } else if (item['marketplace'] === 'reverb' && item['productUrl']) {
             // For Reverb items, we would implement similar logic
             // This is a placeholder for the actual implementation
           }
@@ -397,7 +397,7 @@ export class BatchProcessingSystem {
           // Add delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
-          console.error(`Error updating price for audio gear ${item.name}:`, error);
+          console.error(`Error updating price for audio gear ${item['name']}:`, error);
           // Continue with next item
         }
       }
@@ -408,9 +408,9 @@ export class BatchProcessingSystem {
       // Update prices for cases
       for (const item of caseItems) {
         try {
-          if (item.marketplace === 'canopy' && item.url) {
+          if (item['marketplace'] === 'canopy' && item['url']) {
             // Extract product ID from URL
-            const productId = item.url.split('/').pop();
+            const productId = item['url'].split('/').pop();
             
             if (productId) {
               // Get updated product data
@@ -419,18 +419,18 @@ export class BatchProcessingSystem {
               // Update price
               if (productData.price) {
                 await caseCollection.updateOne(
-                  { _id: item._id },
+                  { _id: item['_id'] },
                   { 
                     $set: {
-                      price: parseFloat(productData.price.amount || productData.price.value || productData.price) || item.price,
-                      currency: productData.price.currency || item.currency,
+                      price: parseFloat(productData.price.amount || productData.price.value || productData.price) || item['price'],
+                      currency: productData.price.currency || item['currency'],
                       updatedAt: new Date()
                     }
                   }
                 );
               }
             }
-          } else if (item.marketplace === 'reverb' && item.url) {
+          } else if (item['marketplace'] === 'reverb' && item['url']) {
             // For Reverb items, we would implement similar logic
             // This is a placeholder for the actual implementation
           }
@@ -438,7 +438,7 @@ export class BatchProcessingSystem {
           // Add delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
-          console.error(`Error updating price for case ${item.name}:`, error);
+          console.error(`Error updating price for case ${item['name']}:`, error);
           // Continue with next item
         }
       }
@@ -518,9 +518,9 @@ export class BatchProcessingSystem {
       for (const item of audioGearItems) {
         // Check if item already exists
         const existingItem = await collection.findOne({ 
-          name: item.name,
-          brand: item.brand,
-          marketplace: item.marketplace
+          name: item['name'],
+          brand: item['brand'],
+          marketplace: item['marketplace']
         });
 
         if (existingItem) {
@@ -559,9 +559,9 @@ export class BatchProcessingSystem {
       for (const item of caseItems) {
         // Check if item already exists
         const existingItem = await collection.findOne({ 
-          name: item.name,
-          brand: item.brand,
-          marketplace: item.marketplace
+          name: item['name'],
+          brand: item['brand'],
+          marketplace: item['marketplace']
         });
 
         if (existingItem) {

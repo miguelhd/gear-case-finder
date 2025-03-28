@@ -223,8 +223,8 @@ export function mapToAudioGear(item: any): any {
     const description = item.description || '';
     const features = description
       .split('\n')
-      .filter(line => line.trim().length > 0)
-      .map(line => line.trim());
+      .filter((line: string) => line.trim().length > 0)
+      .map((line: string) => line.trim());
     
     // Determine product type from title and category
     let type = 'unknown';
@@ -304,8 +304,8 @@ export function mapToCase(item: any): any {
     const description = item.description || '';
     const features = description
       .split('\n')
-      .filter(line => line.trim().length > 0)
-      .map(line => line.trim());
+      .filter((line: string) => line.trim().length > 0)
+      .map((line: string) => line.trim());
     
     // Determine case properties from description and features
     let waterproof = false;

@@ -32,7 +32,7 @@ const UserFeedbackSchema = new mongoose.Schema({
 UserFeedbackSchema.index({ gearId: 1, caseId: 1 });
 
 // Create the model
-let UserFeedbackModel;
+let UserFeedbackModel: mongoose.Model<UserFeedback & mongoose.Document>;
 try {
   UserFeedbackModel = mongoose.model<UserFeedback & mongoose.Document>('UserFeedback');
 } catch (error) {

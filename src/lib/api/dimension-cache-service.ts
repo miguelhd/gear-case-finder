@@ -70,7 +70,7 @@ export class DimensionCacheService {
       
       // Create indexes if they don't exist
       const indexes = await collection.indexes();
-      const indexNames = indexes.map(index => index.name);
+      const indexNames = indexes.map(index => index['name']);
       
       if (!indexNames.includes('instrumentType_1_brand_1_model_1')) {
         await collection.createIndex(
