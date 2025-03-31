@@ -32,7 +32,7 @@ export class CanopyApiClient {
   
   constructor(config: CanopyApiConfig) {
     this.config = {
-      baseUrl: 'https://api.canopyapi.co/v1',
+      baseUrl: 'https://graphql.canopyapi.co',
       ...config
     };
   }
@@ -49,61 +49,132 @@ export class CanopyApiClient {
   }
 
   /**
+   * Execute a GraphQL query against the Canopy API
+   */
+  private async executeQuery(query: string, variables: any = {}): Promise<any> {
+    try {
+      const headers = this.generateHeaders();
+      
+      const response = await axios({
+        method: 'post',
+        url: this.config.baseUrl,
+        headers: headers,
+        data: {
+          query,
+          variables
+        }
+      });
+      
+      if (response.data.errors) {
+        throw new Error(`GraphQL Error: ${JSON.stringify(response.data.errors)}`);
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error executing GraphQL query:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Search for products using various criteria
    */
   async searchProducts(request: SearchItemsRequest): Promise<any> {
     try {
-      const headers = this.generateHeaders();
+      const query = `
+        query amazonProductSearch($input: AmazonProductSearchResultsInput!) {
+          amazonProductSearch(input: $input) {
+            results {
+              title
+              brand
+              mainImageUrl
+              images {
+                hiRes
+                large
+                medium
+                thumb
+              }
+              rating
+              ratingsTotal
+              price {
+                display
+                value
+                currency
+              }
+              dimensions {
+                length
+                width
+                height
+                unit
+              }
+              weight {
+                value
+                unit
+              }
+              description
+              features
+              asin
+              categories
+              technicalDetails {
+                name
+                value
+              }
+            }
+          }
+        }
+      `;
       
-      // Build query parameters
-      const params: any = {
-        limit: request.limit || 20,
-        offset: request.offset || 0
+      // Build variables for the GraphQL query
+      const variables = {
+        input: {
+          searchTerm: request.query || '',
+          domain: 'US',
+          limit: request.limit || 20
+        }
       };
       
-      if (request.query) {
-        params.query = request.query;
-      }
-      
+      // Add category if provided
       if (request.category) {
-        params.category = request.category;
+        variables.input.categoryId = request.category;
       }
       
-      if (request.minPrice) {
-        params.min_price = request.minPrice;
+      // Add refinements if needed
+      if (request.minPrice || request.maxPrice) {
+        variables.input.refinements = {
+          price: {
+            min: request.minPrice,
+            max: request.maxPrice
+          }
+        };
       }
       
-      if (request.maxPrice) {
-        params.max_price = request.maxPrice;
-      }
+      const result = await this.executeQuery(query, variables);
       
-      // Add dimension parameters if provided
-      if (request.dimensions) {
-        if (request.dimensions.length) {
-          params.length = request.dimensions.length;
-        }
-        
-        if (request.dimensions.width) {
-          params.width = request.dimensions.width;
-        }
-        
-        if (request.dimensions.height) {
-          params.height = request.dimensions.height;
-        }
-        
-        if (request.dimensions.unit) {
-          params.dimension_unit = request.dimensions.unit;
-        }
-      }
-      
-      const response = await axios({
-        method: 'get',
-        url: `${this.config.baseUrl}/products/search`,
-        headers: headers,
-        params: params
-      });
-      
-      return response.data;
+      // Transform the result to match the expected format
+      return {
+        products: result.amazonProductSearch.results.map((item: any) => ({
+          title: item.title,
+          brand: item.brand,
+          image: item.mainImageUrl,
+          images: item.images ? [
+            item.images.hiRes,
+            item.images.large,
+            item.images.medium,
+            item.images.thumb
+          ].filter(Boolean) : [],
+          price: item.price,
+          dimensions: item.dimensions,
+          weight: item.weight,
+          description: item.description,
+          features: item.features,
+          id: item.asin,
+          category: item.categories && item.categories.length > 0 ? item.categories[0] : '',
+          attributes: item.technicalDetails,
+          rating: item.rating,
+          reviewCount: item.ratingsTotal,
+          marketplace: 'amazon'
+        }))
+      };
     } catch (error) {
       console.error('Error searching products:', error);
       throw error;
@@ -115,15 +186,81 @@ export class CanopyApiClient {
    */
   async getProduct(productId: string): Promise<any> {
     try {
-      const headers = this.generateHeaders();
+      const query = `
+        query amazonProduct($input: AmazonProductInput!) {
+          amazonProduct(input: $input) {
+            title
+            brand
+            mainImageUrl
+            images {
+              hiRes
+              large
+              medium
+              thumb
+            }
+            rating
+            ratingsTotal
+            price {
+              display
+              value
+              currency
+            }
+            dimensions {
+              length
+              width
+              height
+              unit
+            }
+            weight {
+              value
+              unit
+            }
+            description
+            features
+            asin
+            categories
+            technicalDetails {
+              name
+              value
+            }
+          }
+        }
+      `;
       
-      const response = await axios({
-        method: 'get',
-        url: `${this.config.baseUrl}/products/${productId}`,
-        headers: headers
-      });
+      const variables = {
+        input: {
+          asinLookup: {
+            asin: productId
+          }
+        }
+      };
       
-      return response.data;
+      const result = await this.executeQuery(query, variables);
+      
+      // Transform the result to match the expected format
+      const item = result.amazonProduct;
+      return {
+        title: item.title,
+        brand: item.brand,
+        image: item.mainImageUrl,
+        images: item.images ? [
+          item.images.hiRes,
+          item.images.large,
+          item.images.medium,
+          item.images.thumb
+        ].filter(Boolean) : [],
+        price: item.price,
+        dimensions: item.dimensions,
+        weight: item.weight,
+        description: item.description,
+        features: item.features,
+        id: item.asin,
+        category: item.categories && item.categories.length > 0 ? item.categories[0] : '',
+        attributes: item.technicalDetails,
+        rating: item.rating,
+        reviewCount: item.ratingsTotal,
+        marketplace: 'amazon'
+      };
     } catch (error) {
       console.error(`Error getting product ${productId}:`, error);
       throw error;
@@ -135,27 +272,119 @@ export class CanopyApiClient {
    */
   async searchByDimensions(length: number, width: number, height: number, unit: string = 'in', tolerance: number = 0.5): Promise<any> {
     try {
-      const headers = this.generateHeaders();
+      // For dimension search, we'll use a more general search and filter the results
+      const query = `
+        query amazonProductSearch($input: AmazonProductSearchResultsInput!) {
+          amazonProductSearch(input: $input) {
+            results {
+              title
+              brand
+              mainImageUrl
+              images {
+                hiRes
+                large
+                medium
+                thumb
+              }
+              rating
+              ratingsTotal
+              price {
+                display
+                value
+                currency
+              }
+              dimensions {
+                length
+                width
+                height
+                unit
+              }
+              weight {
+                value
+                unit
+              }
+              description
+              features
+              asin
+              categories
+              technicalDetails {
+                name
+                value
+              }
+            }
+          }
+        }
+      `;
       
-      const params: any = {
-        length_min: length - tolerance,
-        length_max: length + tolerance,
-        width_min: width - tolerance,
-        width_max: width + tolerance,
-        height_min: height - tolerance,
-        height_max: height + tolerance,
-        dimension_unit: unit,
-        limit: 50
+      // Search for cases or containers
+      const variables = {
+        input: {
+          searchTerm: 'case container box protective',
+          domain: 'US',
+          limit: 50
+        }
       };
       
-      const response = await axios({
-        method: 'get',
-        url: `${this.config.baseUrl}/products/search`,
-        headers: headers,
-        params: params
+      const result = await this.executeQuery(query, variables);
+      
+      // Filter results by dimensions with tolerance
+      const filteredProducts = result.amazonProductSearch.results.filter((item: any) => {
+        if (!item.dimensions) return false;
+        
+        const itemLength = item.dimensions.length;
+        const itemWidth = item.dimensions.width;
+        const itemHeight = item.dimensions.height;
+        
+        // Skip items without dimensions
+        if (!itemLength || !itemWidth || !itemHeight) return false;
+        
+        // Convert units if necessary
+        const conversionFactor = item.dimensions.unit === unit ? 1 : 
+                                (unit === 'in' && item.dimensions.unit === 'cm') ? 0.393701 :
+                                (unit === 'cm' && item.dimensions.unit === 'in') ? 2.54 : 1;
+        
+        const normalizedItemLength = itemLength * conversionFactor;
+        const normalizedItemWidth = itemWidth * conversionFactor;
+        const normalizedItemHeight = itemHeight * conversionFactor;
+        
+        // Check if dimensions are within tolerance
+        const lengthMin = length - tolerance;
+        const lengthMax = length + tolerance;
+        const widthMin = width - tolerance;
+        const widthMax = width + tolerance;
+        const heightMin = height - tolerance;
+        const heightMax = height + tolerance;
+        
+        return (normalizedItemLength >= lengthMin && normalizedItemLength <= lengthMax) ||
+               (normalizedItemWidth >= widthMin && normalizedItemWidth <= widthMax) ||
+               (normalizedItemHeight >= heightMin && normalizedItemHeight <= heightMax);
       });
       
-      return response.data;
+      // Transform the result to match the expected format
+      return {
+        products: filteredProducts.map((item: any) => ({
+          title: item.title,
+          brand: item.brand,
+          image: item.mainImageUrl,
+          images: item.images ? [
+            item.images.hiRes,
+            item.images.large,
+            item.images.medium,
+            item.images.thumb
+          ].filter(Boolean) : [],
+          price: item.price,
+          dimensions: item.dimensions,
+          weight: item.weight,
+          description: item.description,
+          features: item.features,
+          id: item.asin,
+          category: item.categories && item.categories.length > 0 ? item.categories[0] : '',
+          attributes: item.technicalDetails,
+          rating: item.rating,
+          reviewCount: item.ratingsTotal,
+          marketplace: 'amazon'
+        }))
+      };
     } catch (error) {
       console.error('Error searching products by dimensions:', error);
       throw error;
@@ -167,7 +396,7 @@ export class CanopyApiClient {
    */
   async searchAudioGear(keywords: string, limit: number = 20): Promise<any> {
     return this.searchProducts({
-      query: keywords,
+      query: keywords + ' synthesizer keyboard "desktop synth"',
       category: 'electronics',
       limit: limit
     });
@@ -178,7 +407,7 @@ export class CanopyApiClient {
    */
   async searchCases(keywords: string, limit: number = 20): Promise<any> {
     return this.searchProducts({
-      query: keywords + ' case',
+      query: keywords + ' case protective container',
       limit: limit
     });
   }
