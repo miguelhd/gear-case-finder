@@ -52,60 +52,135 @@ const ActivityItem = ({ title, time, description, icon }) => (
 );
 
 const AdminDashboard = () => {
-  // Mock data for dashboard
-  const stats = [
+  const [stats, setStats] = React.useState([
     { 
       title: 'Total Audio Gear', 
-      value: '248', 
+      value: 'Loading...', 
       icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', 
       color: 'bg-blue-500' 
     },
     { 
       title: 'Total Cases', 
-      value: '573', 
+      value: 'Loading...', 
       icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z', 
       color: 'bg-green-500' 
     },
     { 
       title: 'Matches Found', 
-      value: '1,024', 
+      value: 'Loading...', 
       icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 
       color: 'bg-purple-500' 
     },
     { 
       title: 'Scraper Jobs', 
-      value: '12', 
+      value: 'Loading...', 
       icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z', 
       color: 'bg-yellow-500' 
     }
-  ];
+  ]);
 
-  const activities = [
+  const [activities, setActivities] = React.useState([
     {
-      title: 'Amazon Scraper Completed',
-      time: '2 hours ago',
-      description: 'Successfully scraped 124 products from Amazon.',
-      icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-    },
-    {
-      title: 'Database Import',
-      time: '5 hours ago',
-      description: 'Imported 89 new cases to the database.',
-      icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4'
-    },
-    {
-      title: 'Match Algorithm Updated',
-      time: '1 day ago',
-      description: 'Improved matching algorithm for better compatibility scores.',
-      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-    },
-    {
-      title: 'System Maintenance',
-      time: '2 days ago',
-      description: 'Performed system maintenance and optimization.',
-      icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z'
+      title: 'Loading activities...',
+      time: '',
+      description: 'Please wait while we fetch the latest activities.',
+      icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
     }
-  ];
+  ]);
+  
+  // Fetch real data from the database
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch('/api/admin/database-stats');
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        
+        const data = await response.json();
+        
+        // Update stats with real data
+        setStats([
+          { 
+            title: 'Total Audio Gear', 
+            value: data.gearCount.toString(), 
+            icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', 
+            color: 'bg-blue-500' 
+          },
+          { 
+            title: 'Total Cases', 
+            value: data.caseCount.toString(), 
+            icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z', 
+            color: 'bg-green-500' 
+          },
+          { 
+            title: 'Matches Found', 
+            value: data.matchCount.toString(), 
+            icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 
+            color: 'bg-purple-500' 
+          },
+          { 
+            title: 'Categories', 
+            value: data.gearCategories.toString(), 
+            icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z', 
+            color: 'bg-yellow-500' 
+          }
+        ]);
+        
+        // Transform recent activity data
+        if (data.recentActivity && data.recentActivity.length > 0) {
+          const formattedActivities = data.recentActivity.map(activity => {
+            const timeAgo = getTimeAgo(new Date(activity.timestamp));
+            return {
+              title: `${activity.collection} ${activity.operation}`,
+              time: timeAgo,
+              description: `${activity.count} items ${activity.operation}ed in ${activity.collection} collection.`,
+              icon: getIconForActivity(activity.operation)
+            };
+          });
+          
+          setActivities(formattedActivities);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+  
+  // Helper function to format time ago
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / 60000);
+    
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffHours = Math.round(diffMins / 60);
+    if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  };
+  
+  // Helper function to get icon for activity type
+  const getIconForActivity = (operation) => {
+    switch (operation) {
+      case 'insert':
+        return 'M12 4v16m8-8H4';
+      case 'update':
+        return 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15';
+      case 'delete':
+        return 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16';
+      default:
+        return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
+    }
+  };
 
   return (
     <AdminLayout title="Dashboard" subtitle="Overview of your system">
