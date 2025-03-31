@@ -26,7 +26,9 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 
 // HTTP link with explicit fetch options optimized for Vercel
 const httpLink = createHttpLink({
-  uri: '/api/graphql',
+  uri: process.env.NODE_ENV === 'production' 
+    ? 'https://gear-case-finder.vercel.app/api/graphql' 
+    : '/api/graphql',
   credentials: 'same-origin',
   headers: {
     'Content-Type': 'application/json',
@@ -44,11 +46,11 @@ export const client = new ApolloClient({
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: {
-      fetchPolicy: 'network-only',
+      fetchPolicy: 'cache-and-network', // Changed from 'network-only' to improve performance while ensuring fresh data
       errorPolicy: 'all',
     },
     query: {
-      fetchPolicy: 'network-only',
+      fetchPolicy: 'cache-and-network', // Changed from 'network-only' to improve performance while ensuring fresh data
       errorPolicy: 'all',
     },
     mutate: {

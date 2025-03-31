@@ -86,16 +86,21 @@ const baseHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     // Connect to database if needed - with enhanced error handling
     try {
-      if (!mongoose.connection.readyState) {
-        console.log(`[${timestamp}] [${requestId}] Connecting to database...`);
-        await connectToMongoDB();
-        console.log(`[${timestamp}] [${requestId}] Database connection established`);
+      console.log(`[${timestamp}] [${requestId}] Connecting to database...`);
+      console.log(`[${timestamp}] [${requestId}] MongoDB URI: ${process.env.MONGODB_URI?.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')}`);
+      console.log(`[${timestamp}] [${requestId}] Current connection state: ${mongoose.connection.readyState}`);
+      
+      // Always attempt to connect to ensure we have a fresh connection
+      await connectToMongoDB();
+      console.log(`[${timestamp}] [${requestId}] Database connection established`);
+      console.log(`[${timestamp}] [${requestId}] Connection state after connect: ${mongoose.connection.readyState}`);
+      
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error(`Failed to connect to MongoDB. Connection state: ${mongoose.connection.readyState}`);
       }
     } catch (dbError) {
-      // Log the error but continue processing the request
       console.error(`[${timestamp}] [${requestId}] Database connection error:`, dbError);
-      console.log(`[${timestamp}] [${requestId}] Continuing without database connection`);
-      // We don't throw here, allowing the GraphQL API to function even without DB
+      throw new Error(`Database connection failed: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
     }
     
     // Process the GraphQL request directly without using Apollo Server's start()
