@@ -68,78 +68,8 @@ const AudioGearManagementPage = () => {
       }
     };
     
-    // For now, use mock data until we implement the API endpoint
-    const mockData = [
-      {
-        _id: '1',
-        name: 'Moog Subsequent 37',
-        brand: 'Moog',
-        category: 'Synthesizer',
-        type: 'Analog Synthesizer',
-        dimensions: {
-          length: 22.5,
-          width: 14.8,
-          height: 5.1,
-          unit: 'in'
-        },
-        weight: {
-          value: 22,
-          unit: 'lb'
-        },
-        imageUrl: 'https://cdn.shopify.com/s/files/1/0657/6821/products/Moog_Subsequent37_1024x1024.jpg',
-        productUrl: 'https://www.moogmusic.com/products/subsequent-37',
-        description: 'Analog synthesizer with 37 keys',
-        popularity: 95,
-        releaseYear: 2017,
-        discontinued: false
-      },
-      {
-        _id: '2',
-        name: 'Roland TR-8S',
-        brand: 'Roland',
-        category: 'Drum Machine',
-        type: 'Digital Drum Machine',
-        dimensions: {
-          length: 16.3,
-          width: 10.4,
-          height: 2.6,
-          unit: 'in'
-        },
-        weight: {
-          value: 4.9,
-          unit: 'lb'
-        },
-        imageUrl: 'https://static.roland.com/assets/images/products/gallery/tr-8s_top_gal.jpg',
-        productUrl: 'https://www.roland.com/global/products/tr-8s/',
-        description: 'Rhythm performer with sample import',
-        popularity: 90,
-        releaseYear: 2018,
-        discontinued: false
-      },
-      {
-        _id: '3',
-        name: 'Elektron Digitakt',
-        brand: 'Elektron',
-        category: 'Drum Machine',
-        type: 'Digital Drum Machine',
-        dimensions: {
-          length: 8.5,
-          width: 7.1,
-          height: 2.2,
-          unit: 'in'
-        },
-        weight: {
-          value: 4.0,
-          unit: 'lb'
-        },
-        imageUrl: 'https://www.elektron.se/wp-content/uploads/2017/01/Digitakt_Angle_1600.jpg',
-        productUrl: 'https://www.elektron.se/products/digitakt/',
-        description: 'Digital drum machine and sampler',
-        popularity: 88,
-        releaseYear: 2017,
-        discontinued: false
-      }
-    ];
+    // Fetch audio gear data from the API
+    fetchAudioGear();
     
     // Extract unique categories and brands for filters
     const fetchCategoriesAndBrands = async () => {
