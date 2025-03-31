@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import connectToMongoDB from '../../../lib/mongodb';
+import { ActivityEntry } from '../../../types/admin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Get real activity data from database logs (or create a basic version based on timestamps)
     // This is a simplified version - in a real app, you'd have a proper activity logging system
-    const recentActivity = [];
+    const recentActivity: ActivityEntry[] = [];
     
     // Add recent activity based on collection timestamps if available
     try {
