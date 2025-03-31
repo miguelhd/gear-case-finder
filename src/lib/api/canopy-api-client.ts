@@ -129,24 +129,18 @@ export class CanopyApiClient {
         input: {
           searchTerm: request.query || '',
           domain: 'US',
-          limit: request.limit || 20
+          limit: request.limit || 20,
+          categoryId: request.category || undefined, // Initialize with category if provided
+          refinements: request.minPrice || request.maxPrice ? {
+            price: {
+              min: request.minPrice,
+              max: request.maxPrice
+            }
+          } : undefined // Initialize refinements if price filters are provided
         }
       };
       
-      // Add category if provided
-      if (request.category) {
-        variables.input.categoryId = request.category;
-      }
-      
-      // Add refinements if needed
-      if (request.minPrice || request.maxPrice) {
-        variables.input.refinements = {
-          price: {
-            min: request.minPrice,
-            max: request.maxPrice
-          }
-        };
-      }
+      // Category and refinements are already added during initialization
       
       const result = await this.executeQuery(query, variables);
       

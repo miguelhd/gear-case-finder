@@ -18,10 +18,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .populate('case');
     
     // Extract unique gear types
-    const gearTypes = [...new Set(matches.map(match => match.gear.type))];
+    const gearTypes = [...new Set(matches.map(match => {
+      const gear = typeof match.gearId === 'object' && match.gearId ? match.gearId as any : null;
+      return gear ? gear.type : null;
+    }).filter(Boolean))];
     
     // Extract unique case types
-    const caseTypes = [...new Set(matches.map(match => match.case.type))];
+    const caseTypes = [...new Set(matches.map(match => {
+      const caseItem = typeof match.caseId === 'object' && match.caseId ? match.caseId as any : null;
+      return caseItem ? caseItem.type : null;
+    }).filter(Boolean))];
     
     // Return the results
     return res.status(200).json({

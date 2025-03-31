@@ -60,6 +60,9 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
   
   // Add search filter if provided
   if (search) {
+    // Ensure search is a string (NextJS query params can be string or string[])
+    const searchTerm = Array.isArray(search) ? search[0] : search;
+    
     // We need to search in populated fields, so we'll handle this differently
     // First, get all matches with populated gear and case
     const allMatches = await GearCaseMatch.find()
@@ -75,12 +78,12 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
         if (!gear || !caseItem) return false;
         
         return (
-          gear.name.toLowerCase().includes(search.toLowerCase()) ||
-          gear.brand.toLowerCase().includes(search.toLowerCase()) ||
-          gear.type.toLowerCase().includes(search.toLowerCase()) ||
-          caseItem.name.toLowerCase().includes(search.toLowerCase()) ||
-          caseItem.brand.toLowerCase().includes(search.toLowerCase()) ||
-          caseItem.type.toLowerCase().includes(search.toLowerCase())
+          gear.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          gear.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          gear.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          caseItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          caseItem.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          caseItem.type.toLowerCase().includes(searchTerm.toLowerCase())
         );
       })
       .map(match => match._id);
@@ -96,7 +99,12 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
       .populate('gear');
       
     const filteredIds = matchesWithGearType
-      .filter(match => match.gear.type === gearType)
+      .filter(match => {
+        // Ensure gear is properly typed as a populated field
+        const gear = typeof match.gearId === 'object' && match.gearId ? match.gearId as any : null;
+        if (!gear) return false;
+        return gear.type === gearType;
+      })
       .map(match => match._id);
       
     // Combine with existing query
@@ -114,7 +122,12 @@ async function handleGetRequest(req: NextApiRequest, res: NextApiResponse) {
       .populate('case');
       
     const filteredIds = matchesWithCaseType
-      .filter(match => match.case.type === caseType)
+      .filter(match => {
+        // Ensure case is properly typed as a populated field
+        const caseItem = typeof match.caseId === 'object' && match.caseId ? match.caseId as any : null;
+        if (!caseItem) return false;
+        return caseItem.type === caseType;
+      })
       .map(match => match._id);
       
     // Combine with existing query
