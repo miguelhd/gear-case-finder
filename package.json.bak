@@ -13,9 +13,7 @@
     "cypress": "cypress open",
     "db:setup": "node scripts/db-setup/index.js",
     "db:test-connection": "node scripts/db-setup/test-connection.js",
-    "db:import": "node scripts/db-import/index.js",
-    "script": "node scripts/run-script.js",
-    "db:populate": "node scripts/run-script.js scripts/populate-database.ts"
+    "db:import": "node scripts/db-import/index.js"
   },
   "dependencies": {
     "@apollo/client": "^3.8.0",
