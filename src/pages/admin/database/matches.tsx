@@ -89,8 +89,8 @@ const MatchManagementPage = () => {
       } catch (err) {
         console.error('Error fetching gear and case types:', err);
         // Fallback to extracting from current items if API fails
-        const uniqueGearTypes = [...new Set(matches.map(match => match.gear?.type).filter(Boolean))];
-        const uniqueCaseTypes = [...new Set(matches.map(match => match.case?.type).filter(Boolean))];
+        const uniqueGearTypes = [...new Set(matches.map(match => match.gear?.type).filter(Boolean))] as string[];
+        const uniqueCaseTypes = [...new Set(matches.map(match => match.case?.type).filter(Boolean))] as string[];
         setGearTypes(uniqueGearTypes);
         setCaseTypes(uniqueCaseTypes);
       }

@@ -542,6 +542,16 @@ export interface IGearCaseMatch extends Document {
   negativeCount: number;
   
   /**
+   * Count of positive feedback submissions (alias for positiveCount).
+   */
+  positiveFeedbackCount?: number;
+  
+  /**
+   * Count of negative feedback submissions (alias for negativeCount).
+   */
+  negativeFeedbackCount?: number;
+  
+  /**
    * Dimension fit information.
    */
   dimensionFit?: any;
@@ -565,6 +575,22 @@ export interface IGearCaseMatch extends Document {
    * Date when the record was last updated.
    */
   updatedAt?: Date;
+  
+  /**
+   * Populated gear data (available when populated via Mongoose).
+   */
+  gear?: {
+    type?: string;
+    [key: string]: any;
+  };
+  
+  /**
+   * Populated case data (available when populated via Mongoose).
+   */
+  case?: {
+    type?: string;
+    [key: string]: any;
+  };
 }
 
 /**
