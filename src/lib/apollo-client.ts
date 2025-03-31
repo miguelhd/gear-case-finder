@@ -46,11 +46,11 @@ export const client = new ApolloClient({
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: {
-      fetchPolicy: 'cache-and-network', // Changed from 'network-only' to improve performance while ensuring fresh data
+      fetchPolicy: 'network-only', // Keep as 'network-only' to ensure fresh data
       errorPolicy: 'all',
     },
     query: {
-      fetchPolicy: 'cache-and-network', // Changed from 'network-only' to improve performance while ensuring fresh data
+      fetchPolicy: 'network-only', // Keep as 'network-only' to ensure fresh data
       errorPolicy: 'all',
     },
     mutate: {
